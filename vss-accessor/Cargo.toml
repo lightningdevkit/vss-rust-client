@@ -5,6 +5,8 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
+prost = "0.11.9"
+reqwest = { version = "0.11.13", features = ["rustls-tls"] }
 
 [dev-dependencies]
 

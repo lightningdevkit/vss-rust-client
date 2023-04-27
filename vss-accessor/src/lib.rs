@@ -9,7 +9,7 @@ use crate::vss::{
 };
 use crate::vss_error::VssError;
 
-mod vss_error;
+pub mod vss_error;
 
 pub mod vss {
 	include!("generated-src/org.vss.rs");

@@ -5,14 +5,16 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-prost = "0.11.9"
+prost = "0.11.6"
 reqwest = { version = "0.11.13", features = ["rustls-tls"] }
-
-[dev-dependencies]
 
 [build-dependencies]
 prost-build = { version = "0.11.3" }
 reqwest =  { version = "0.11.13", features = ["blocking"] }
+
+[dev-dependencies]
+mockito = "0.31.1"
+tokio = { version = "1.22.0", features = ["macros"]}
 
 [features]
 genproto = []

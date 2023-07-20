@@ -1,8 +1,7 @@
+#[cfg(feature = "genproto")]
 extern crate prost_build;
-
-use std::fs::File;
-use std::path::Path;
-use std::{env, fs};
+#[cfg(feature = "genproto")]
+use std::{env, fs, fs::File, path::Path};
 
 /// To generate updated proto objects:
 /// 1. Place `vss.proto` file in `src/proto/`
@@ -20,8 +19,8 @@ fn generate_protos() {
 		).unwrap();
 
 	prost_build::compile_protos(&["src/proto/vss.proto"], &["src/"]).unwrap();
-	let from_path = Path::new(&env::var("OUT_DIR").unwrap()).join("org.vss.rs");
-	fs::copy(from_path, "src/generated-src/org.vss.rs").unwrap();
+	let from_path = Path::new(&env::var("OUT_DIR").unwrap()).join("vss.rs");
+	fs::copy(from_path, "src/types.rs").unwrap();
 }
 
 #[cfg(feature = "genproto")]

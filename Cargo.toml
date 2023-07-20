@@ -1,4 +1,18 @@
-[workspace]
-members = [
-    "vss-accessor",
-]
+[package]
+name = "vss-client"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+prost = "0.11.9"
+reqwest = { version = "0.11.13", features = ["rustls-tls"] }
+
+[dev-dependencies]
+
+[build-dependencies]
+prost-build = { version = "0.11.3" }
+reqwest =  { version = "0.11.13", features = ["blocking"] }
+
+[features]
+genproto = []

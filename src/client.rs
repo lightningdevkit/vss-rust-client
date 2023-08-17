@@ -10,6 +10,7 @@ use crate::types::{
 
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
 /// The provided [`VssClient`] API is minimalistic and is congruent to the VSS server-side API.
+#[derive(Clone)]
 pub struct VssClient {
 	base_url: String,
 	client: Client,

@@ -4,8 +4,8 @@ use reqwest::Client;
 
 use crate::error::VssError;
 use crate::types::{
-	GetObjectRequest, GetObjectResponse, ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest,
-	PutObjectResponse,
+	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse, ListKeyVersionsRequest,
+	ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 };
 
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
@@ -54,6 +54,24 @@ impl VssClient {
 
 		if status.is_success() {
 			let response = PutObjectResponse::decode(&payload[..])?;
+			Ok(response)
+		} else {
+			Err(VssError::new(status, payload))
+		}
+	}
+
+	/// Deletes the given `key` and `value` in `request`.
+	/// Makes a service call to the `DeleteObject` endpoint of the VSS server.
+	/// For API contract/usage, refer to docs for [`DeleteObjectRequest`] and [`DeleteObjectResponse`].
+	pub async fn delete_object(&self, request: &DeleteObjectRequest) -> Result<DeleteObjectResponse, VssError> {
+		let url = format!("{}/deleteObject", self.base_url);
+
+		let response_raw = self.client.post(url).body(request.encode_to_vec()).send().await?;
+		let status = response_raw.status();
+		let payload = response_raw.bytes().await?;
+
+		if status.is_success() {
+			let response = DeleteObjectResponse::decode(&payload[..])?;
 			Ok(response)
 		} else {
 			Err(VssError::new(status, payload))

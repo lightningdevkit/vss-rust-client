@@ -6,12 +6,13 @@ mod tests {
 	use vss_client::error::VssError;
 
 	use vss_client::types::{
-		ErrorCode, ErrorResponse, GetObjectRequest, GetObjectResponse, KeyValue, ListKeyVersionsRequest,
-		ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
+		DeleteObjectRequest, DeleteObjectResponse, ErrorCode, ErrorResponse, GetObjectRequest, GetObjectResponse,
+		KeyValue, ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 	};
 
 	const GET_OBJECT_ENDPOINT: &'static str = "/getObject";
 	const PUT_OBJECT_ENDPOINT: &'static str = "/putObjects";
+	const DELETE_OBJECT_ENDPOINT: &'static str = "/deleteObject";
 	const LIST_KEY_VERSIONS_ENDPOINT: &'static str = "/listKeyVersions";
 
 	#[tokio::test]
@@ -55,6 +56,7 @@ mod tests {
 			store_id: "store".to_string(),
 			global_version: Some(4),
 			transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+			delete_items: vec![],
 		};
 		let mock_response = PutObjectResponse::default();
 
@@ -68,6 +70,36 @@ mod tests {
 		// Create a new VssClient with the mock server URL.
 		let vss_client = VssClient::new(&base_url);
 		let actual_result = vss_client.put_object(&request).await.unwrap();
+
+		let expected_result = &mock_response;
+		assert_eq!(actual_result, *expected_result);
+
+		// Verify server endpoint was called exactly once.
+		mock_server.expect(1).assert();
+	}
+
+	#[tokio::test]
+	async fn test_delete() {
+		// Spin-up mock server with mock response for given request.
+		let base_url = mockito::server_url().to_string();
+
+		// Set up the mock request/response.
+		let request = DeleteObjectRequest {
+			store_id: "store".to_string(),
+			key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+		};
+		let mock_response = DeleteObjectResponse::default();
+
+		// Register the mock endpoint with the mockito server.
+		let mock_server = mockito::mock("POST", DELETE_OBJECT_ENDPOINT)
+			.match_body(request.encode_to_vec())
+			.with_status(200)
+			.with_body(mock_response.encode_to_vec())
+			.create();
+
+		// Create a new VssClient with the mock server URL.
+		let vss_client = VssClient::new(&base_url);
+		let actual_result = vss_client.delete_object(&request).await.unwrap();
 
 		let expected_result = &mock_response;
 		assert_eq!(actual_result, *expected_result);
@@ -142,9 +174,18 @@ mod tests {
 				store_id: "store".to_string(),
 				global_version: Some(4),
 				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				delete_items: vec![],
 			})
 			.await;
 		assert!(matches!(put_result.unwrap_err(), VssError::InvalidRequestError { .. }));
+
+		let delete_result = vss_client
+			.delete_object(&DeleteObjectRequest {
+				store_id: "store".to_string(),
+				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+			})
+			.await;
+		assert!(matches!(delete_result.unwrap_err(), VssError::InvalidRequestError { .. }));
 
 		let list_result = vss_client
 			.list_key_versions(&ListKeyVersionsRequest {
@@ -156,8 +197,8 @@ mod tests {
 			.await;
 		assert!(matches!(list_result.unwrap_err(), VssError::InvalidRequestError { .. }));
 
-		// Verify 3 requests hit the server
-		mock_server.expect(3).assert();
+		// Verify 4 requests hit the server
+		mock_server.expect(4).assert();
 	}
 
 	#[tokio::test]
@@ -178,6 +219,7 @@ mod tests {
 				store_id: "store".to_string(),
 				global_version: Some(4),
 				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				delete_items: vec![],
 			})
 			.await;
 		assert!(matches!(put_result.unwrap_err(), VssError::ConflictError { .. }));
@@ -211,9 +253,18 @@ mod tests {
 				store_id: "store".to_string(),
 				global_version: Some(4),
 				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				delete_items: vec![],
 			})
 			.await;
 		assert!(matches!(put_result.unwrap_err(), VssError::InternalServerError { .. }));
+
+		let delete_result = vss_client
+			.delete_object(&DeleteObjectRequest {
+				store_id: "store".to_string(),
+				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+			})
+			.await;
+		assert!(matches!(delete_result.unwrap_err(), VssError::InternalServerError { .. }));
 
 		let list_result = vss_client
 			.list_key_versions(&ListKeyVersionsRequest {
@@ -225,8 +276,8 @@ mod tests {
 			.await;
 		assert!(matches!(list_result.unwrap_err(), VssError::InternalServerError { .. }));
 
-		// Verify 3 requests hit the server
-		mock_server.expect(3).assert();
+		// Verify 4 requests hit the server
+		mock_server.expect(4).assert();
 	}
 
 	#[tokio::test]
@@ -248,6 +299,7 @@ mod tests {
 			store_id: "store".to_string(),
 			global_version: Some(4),
 			transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+			delete_items: vec![],
 		};
 		let put_result = vss_client.put_object(&put_request).await;
 		assert!(matches!(put_result.unwrap_err(), VssError::InternalError { .. }));

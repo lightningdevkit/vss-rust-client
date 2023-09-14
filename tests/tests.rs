@@ -150,6 +150,30 @@ mod tests {
 	}
 
 	#[tokio::test]
+	async fn test_no_such_key_err_handling() {
+		let base_url = mockito::server_url();
+		let vss_client = VssClient::new(&base_url);
+
+		// NoSuchKeyError
+		let error_response = ErrorResponse {
+			error_code: ErrorCode::NoSuchKeyException.into(),
+			message: "NoSuchKeyException".to_string(),
+		};
+		let mock_server = mockito::mock("POST", GET_OBJECT_ENDPOINT)
+			.with_status(409)
+			.with_body(&error_response.encode_to_vec())
+			.create();
+
+		let get_result = vss_client
+			.get_object(&GetObjectRequest { store_id: "store".to_string(), key: "non_existent_key".to_string() })
+			.await;
+		assert!(matches!(get_result.unwrap_err(), VssError::NoSuchKeyError { .. }));
+
+		// Verify 1 request hit the server
+		mock_server.expect(1).assert();
+	}
+
+	#[tokio::test]
 	async fn test_invalid_request_err_handling() {
 		let base_url = mockito::server_url();
 		let vss_client = VssClient::new(&base_url);

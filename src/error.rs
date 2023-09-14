@@ -10,9 +10,20 @@ use std::fmt::{Display, Formatter};
 /// information regarding each error code and corresponding use-cases.
 #[derive(Debug)]
 pub enum VssError {
+	/// Please refer to [`ErrorCode::NoSuchKeyException`].
+	NoSuchKeyError(String),
+
+	/// Please refer to [`ErrorCode::InvalidRequestException`].
 	InvalidRequestError(String),
+
+	/// Please refer to [`ErrorCode::ConflictException`].
 	ConflictError(String),
+
+	/// Please refer to [`ErrorCode::InternalServerException`].
 	InternalServerError(String),
+
+	/// There is an unknown error, it could be a client-side bug, unrecognized error-code, network error
+	/// or something else.
 	InternalError(String),
 }
 
@@ -33,6 +44,9 @@ impl VssError {
 impl Display for VssError {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		match self {
+			VssError::NoSuchKeyError(message) => {
+				write!(f, "Requested key does not exist: {}", message)
+			}
 			VssError::InvalidRequestError(message) => {
 				write!(f, "Request sent to VSS Storage was invalid: {}", message)
 			}
@@ -54,6 +68,7 @@ impl Error for VssError {}
 impl From<ErrorResponse> for VssError {
 	fn from(error_response: ErrorResponse) -> Self {
 		match error_response.error_code() {
+			ErrorCode::NoSuchKeyException => VssError::NoSuchKeyError(error_response.message),
 			ErrorCode::InvalidRequestException => VssError::InvalidRequestError(error_response.message),
 			ErrorCode::ConflictException => VssError::ConflictError(error_response.message),
 			ErrorCode::InternalServerException => VssError::InternalServerError(error_response.message),

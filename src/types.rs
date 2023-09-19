@@ -10,7 +10,10 @@ pub struct GetObjectRequest {
 	/// Authorization and billing can also be performed at the `store_id` level.
 	#[prost(string, tag = "1")]
 	pub store_id: ::prost::alloc::string::String,
-	/// `Key` for which the value is to be fetched.
+	/// The key of the value to be fetched.
+	///
+	/// If the specified `key` does not exist, returns `ErrorCode.NO_SUCH_KEY_EXCEPTION` in the
+	/// the `ErrorResponse`.
 	///
 	/// Consistency Guarantee:
 	/// Get(read) operations against a `key` are consistent reads and will reflect all previous writes,
@@ -287,17 +290,19 @@ pub struct KeyValue {
 pub enum ErrorCode {
 	/// Default protobuf Enum value. Will not be used as `ErrorCode` by server.
 	Unknown = 0,
-	/// CONFLICT_EXCEPTION is used when the request contains mismatched version (either key or global)
+	/// Used when the request contains mismatched version (either key or global)
 	/// in `PutObjectRequest`. For more info refer `PutObjectRequest`.
 	ConflictException = 1,
-	/// INVALID_REQUEST_EXCEPTION is used in the following cases:
+	/// Used in the following cases:
 	///    - The request was missing a required argument.
 	///    - The specified argument was invalid, incomplete or in the wrong format.
 	///    - The request body of api cannot be deserialized into corresponding protobuf object.
 	InvalidRequestException = 2,
-	/// An internal server error occurred, client is probably at no fault and can safely retry this
-	/// error with exponential backoff.
+	/// Used when an internal server error occurred, client is probably at no fault and can safely retry
+	/// this error with exponential backoff.
 	InternalServerException = 3,
+	/// Used when the specified `key` in a `GetObjectRequest` does not exist.
+	NoSuchKeyException = 4,
 }
 impl ErrorCode {
 	/// String value of the enum field names used in the ProtoBuf definition.
@@ -310,6 +315,7 @@ impl ErrorCode {
 			ErrorCode::ConflictException => "CONFLICT_EXCEPTION",
 			ErrorCode::InvalidRequestException => "INVALID_REQUEST_EXCEPTION",
 			ErrorCode::InternalServerException => "INTERNAL_SERVER_EXCEPTION",
+			ErrorCode::NoSuchKeyException => "NO_SUCH_KEY_EXCEPTION",
 		}
 	}
 	/// Creates an enum from field names used in the ProtoBuf definition.
@@ -319,6 +325,7 @@ impl ErrorCode {
 			"CONFLICT_EXCEPTION" => Some(Self::ConflictException),
 			"INVALID_REQUEST_EXCEPTION" => Some(Self::InvalidRequestException),
 			"INTERNAL_SERVER_EXCEPTION" => Some(Self::InternalServerException),
+			"NO_SUCH_KEY_EXCEPTION" => Some(Self::NoSuchKeyException),
 			_ => None,
 		}
 	}

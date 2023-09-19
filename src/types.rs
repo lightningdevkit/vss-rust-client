@@ -1,9 +1,8 @@
 /// Request payload to be used for `GetObject` API call to server.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetObjectRequest {
 	/// `store_id` is a keyspace identifier.
-	/// Ref: <https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store>)
+	/// Ref: https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store)
 	/// All APIs operate within a single `store_id`.
 	/// It is up to clients to use single or multiple stores for their use-case.
 	/// This can be used for client-isolation/ rate-limiting / throttling on the server-side.
@@ -21,12 +20,11 @@ pub struct GetObjectRequest {
 	///
 	/// Read Isolation:
 	/// Get/Read operations against a `key` are ensured to have read-committed isolation.
-	/// Ref: <https://en.wikipedia.org/wiki/Isolation_(database_systems>)#Read_committed
+	/// Ref: https://en.wikipedia.org/wiki/Isolation_(database_systems)#Read_committed
 	#[prost(string, tag = "2")]
 	pub key: ::prost::alloc::string::String,
 }
 /// Server response for `GetObject` API.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetObjectResponse {
 	/// Fetched `value` and `version` along with the corresponding `key` in the request.
@@ -34,11 +32,10 @@ pub struct GetObjectResponse {
 	pub value: ::core::option::Option<KeyValue>,
 }
 /// Request payload to be used for `PutObject` API call to server.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PutObjectRequest {
 	/// `store_id` is a keyspace identifier.
-	/// Ref: <https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store>)
+	/// Ref: https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store)
 	/// All APIs operate within a single `store_id`.
 	/// It is up to clients to use single or multiple stores for their use-case.
 	/// This can be used for client-isolation/ rate-limiting / throttling on the server-side.
@@ -75,25 +72,25 @@ pub struct PutObjectRequest {
 	/// All Items in a single `PutObjectRequest` must have distinct keys.
 	///
 	/// Key-level versioning (Conditional Write):
-	///    Clients are expected to store a `version` against every `key`.
-	///    The write will succeed if the current DB version against the `key` is the same as in the request.
-	///    When initiating a `PutObjectRequest`, the request should contain their client-side `version`
-	///    for that key-value.
+	///   Clients are expected to store a `version` against every `key`.
+	///   The write will succeed if the current DB version against the `key` is the same as in the request.
+	///   When initiating a `PutObjectRequest`, the request should contain their client-side `version`
+	///   for that key-value.
 	///
-	///    For the first write of any `key`, the `version` should be '0'. If the write succeeds, the client
-	///    must increment their corresponding key versions (client-side) by 1.
-	///    The server increments key versions (server-side) for every successful write, hence this
-	///    client-side increment is required to ensure matching versions. These updated key versions should
-	///    be used in subsequent `PutObjectRequest`s for the keys.
+	///   For the first write of any `key`, the `version` should be '0'. If the write succeeds, the client
+	///   must increment their corresponding key versions (client-side) by 1.
+	///   The server increments key versions (server-side) for every successful write, hence this
+	///   client-side increment is required to ensure matching versions. These updated key versions should
+	///   be used in subsequent `PutObjectRequest`s for the keys.
 	///
-	///    Requests with a conflicting/mismatched version will fail with `CONFLICT_EXCEPTION` as ErrorCode
-	///    for conditional writes.
+	///   Requests with a conflicting/mismatched version will fail with `CONFLICT_EXCEPTION` as ErrorCode
+	///   for conditional writes.
 	///
 	/// Skipping key-level versioning (Non-conditional Write):
-	///    If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
-	///    This will perform a non-conditional write query, after which the `version` against the `key`
-	///    is reset to '1'. Hence, the next `PutObjectRequest` for the `key` can be either
-	///    a non-conditional write or a conditional write with `version` set to `1`.
+	///   If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
+	///   This will perform a non-conditional write query, after which the `version` against the `key`
+	///   is reset to '1'. Hence, the next `PutObjectRequest` for the `key` can be either
+	///   a non-conditional write or a conditional write with `version` set to `1`.
 	///
 	/// Considerations for transactions:
 	/// Transaction writes of multiple items have a performance overhead, hence it is recommended to use
@@ -112,18 +109,18 @@ pub struct PutObjectRequest {
 	/// Each item in the `delete_items` field consists of a `key` and its corresponding `version`.
 	///
 	/// Key-Level Versioning (Conditional Delete):
-	///    The `version` is used to perform a version check before deleting the item.
-	///    The delete will only succeed if the current database version against the `key` is the same as
-	///    the `version` specified in the request.
+	///   The `version` is used to perform a version check before deleting the item.
+	///   The delete will only succeed if the current database version against the `key` is the same as
+	///   the `version` specified in the request.
 	///
 	/// Skipping key-level versioning (Non-conditional Delete):
-	///    If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
-	///    This will perform a non-conditional delete query.
+	///   If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
+	///   This will perform a non-conditional delete query.
 	///
 	/// Fails with `CONFLICT_EXCEPTION` as the ErrorCode if:
-	///    * The requested item does not exist.
-	///    * The requested item does exist but there is a version-number mismatch (in conditional delete)
-	///      with the one in the database.
+	///   * The requested item does not exist.
+	///   * The requested item does exist but there is a version-number mismatch (in conditional delete)
+	///     with the one in the database.
 	///
 	/// Multiple items in the `delete_items` field, along with the `transaction_items`, are written in a
 	/// database transaction in an all-or-nothing fashion.
@@ -133,15 +130,13 @@ pub struct PutObjectRequest {
 	pub delete_items: ::prost::alloc::vec::Vec<KeyValue>,
 }
 /// Server response for `PutObject` API.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct PutObjectResponse {}
 /// Request payload to be used for `DeleteObject` API call to server.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteObjectRequest {
 	/// `store_id` is a keyspace identifier.
-	/// Ref: <https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store>)
+	/// Ref: https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store)
 	/// All APIs operate within a single `store_id`.
 	/// It is up to clients to use single or multiple stores for their use-case.
 	/// This can be used for client-isolation/ rate-limiting / throttling on the server-side.
@@ -153,12 +148,12 @@ pub struct DeleteObjectRequest {
 	/// An item consists of a `key` and its corresponding `version`.
 	///
 	/// Key-level Versioning (Conditional Delete):
-	///    The item is only deleted if the current database version against the `key` is the same as
-	///    the `version` specified in the request.
+	///   The item is only deleted if the current database version against the `key` is the same as
+	///   the `version` specified in the request.
 	///
 	/// Skipping key-level versioning (Non-conditional Delete):
-	///    If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
-	///    This will perform a non-conditional delete query.
+	///   If you wish to skip key-level version checks, set the `version` against the `key` to '-1'.
+	///   This will perform a non-conditional delete query.
 	///
 	/// This operation is idempotent, that is, multiple delete calls for the same item will not fail.
 	///
@@ -168,15 +163,13 @@ pub struct DeleteObjectRequest {
 	pub key_value: ::core::option::Option<KeyValue>,
 }
 /// Server response for `DeleteObject` API.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteObjectResponse {}
 /// Request payload to be used for `ListKeyVersions` API call to server.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListKeyVersionsRequest {
 	/// `store_id` is a keyspace identifier.
-	/// Ref: <https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store>)
+	/// Ref: https://en.wikipedia.org/wiki/Keyspace_(distributed_data_store)
 	/// All APIs operate within a single `store_id`.
 	/// It is up to clients to use single or multiple stores for their use-case.
 	/// This can be used for client-isolation/ rate-limiting / throttling on the server-side.
@@ -209,7 +202,6 @@ pub struct ListKeyVersionsRequest {
 	pub page_token: ::core::option::Option<::prost::alloc::string::String>,
 }
 /// Server response for `ListKeyVersions` API.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListKeyVersionsResponse {
 	/// Fetched keys and versions.
@@ -238,9 +230,9 @@ pub struct ListKeyVersionsResponse {
 	///
 	/// In case of refreshing the complete key-version view on the client-side, correct usage for
 	/// the returned `global_version` is as following:
-	///    1. Read `global_version` from the first page of paginated response and save it as local variable.
-	///    2. Update all the `key_versions` on client-side from all the pages of paginated response.
-	///    3. Update `global_version` on client_side from the local variable saved in step-1.
+	///   1. Read `global_version` from the first page of paginated response and save it as local variable.
+	///   2. Update all the `key_versions` on client-side from all the pages of paginated response.
+	///   3. Update `global_version` on client_side from the local variable saved in step-1.
 	/// This ensures that on client-side, all current `key_versions` were stored at `global_version` or later.
 	/// This guarantee is helpful for ensuring the versioning correctness if using the `global_version`
 	/// in `PutObject` API and can help avoid the race conditions related to it.
@@ -249,7 +241,6 @@ pub struct ListKeyVersionsResponse {
 }
 /// When HttpStatusCode is not ok (200), the response `content` contains a serialized `ErrorResponse`
 /// with the relevant `ErrorCode` and `message`
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ErrorResponse {
 	/// The error code uniquely identifying an error condition.
@@ -264,7 +255,6 @@ pub struct ErrorResponse {
 	pub message: ::prost::alloc::string::String,
 }
 /// Represents a key-value pair to be stored or retrieved.
-#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct KeyValue {
 	/// Key against which the value is stored.
@@ -294,39 +284,13 @@ pub enum ErrorCode {
 	/// in `PutObjectRequest`. For more info refer `PutObjectRequest`.
 	ConflictException = 1,
 	/// Used in the following cases:
-	///    - The request was missing a required argument.
-	///    - The specified argument was invalid, incomplete or in the wrong format.
-	///    - The request body of api cannot be deserialized into corresponding protobuf object.
+	///   - The request was missing a required argument.
+	///   - The specified argument was invalid, incomplete or in the wrong format.
+	///   - The request body of api cannot be deserialized into corresponding protobuf object.
 	InvalidRequestException = 2,
 	/// Used when an internal server error occurred, client is probably at no fault and can safely retry
 	/// this error with exponential backoff.
 	InternalServerException = 3,
 	/// Used when the specified `key` in a `GetObjectRequest` does not exist.
 	NoSuchKeyException = 4,
-}
-impl ErrorCode {
-	/// String value of the enum field names used in the ProtoBuf definition.
-	///
-	/// The values are not transformed in any way and thus are considered stable
-	/// (if the ProtoBuf definition does not change) and safe for programmatic use.
-	pub fn as_str_name(&self) -> &'static str {
-		match self {
-			ErrorCode::Unknown => "UNKNOWN",
-			ErrorCode::ConflictException => "CONFLICT_EXCEPTION",
-			ErrorCode::InvalidRequestException => "INVALID_REQUEST_EXCEPTION",
-			ErrorCode::InternalServerException => "INTERNAL_SERVER_EXCEPTION",
-			ErrorCode::NoSuchKeyException => "NO_SUCH_KEY_EXCEPTION",
-		}
-	}
-	/// Creates an enum from field names used in the ProtoBuf definition.
-	pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-		match value {
-			"UNKNOWN" => Some(Self::Unknown),
-			"CONFLICT_EXCEPTION" => Some(Self::ConflictException),
-			"INVALID_REQUEST_EXCEPTION" => Some(Self::InvalidRequestException),
-			"INTERNAL_SERVER_EXCEPTION" => Some(Self::InternalServerException),
-			"NO_SUCH_KEY_EXCEPTION" => Some(Self::NoSuchKeyException),
-			_ => None,
-		}
-	}
 }

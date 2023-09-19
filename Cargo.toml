@@ -16,7 +16,7 @@ prost = "0.11.6"
 reqwest = { version = "0.11.13", features = ["rustls-tls"] }
 
 [build-dependencies]
-prost-build = { version = "0.11.3" }
+prost-build = { version = "0.8.0" }
 reqwest =  { version = "0.11.13", features = ["blocking"] }
 
 [dev-dependencies]

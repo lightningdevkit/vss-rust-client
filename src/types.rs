@@ -279,10 +279,55 @@ pub struct KeyValue {
 	#[prost(int64, tag = "2")]
 	pub version: i64,
 	/// Object value in bytes which is stored (in put) and fetched (in get).
-	/// Clients must encrypt this blob client-side before sending it over the wire to server in order
-	/// to preserve privacy and security.
+	/// Clients must encrypt the secret contents of this blob client-side before sending it over the
+	/// wire to the server in order to preserve privacy and security.
+	/// Clients may use a `Storable` object, serialize it and set it here.
 	#[prost(bytes = "vec", tag = "3")]
 	pub value: ::prost::alloc::vec::Vec<u8>,
+}
+/// Represents a storable object that can be serialized and stored as `value` in `PutObjectRequest`.
+/// Only provided as a helper object for ease of use by clients.
+/// Clients MUST encrypt the `PlaintextBlob` before using it as `data` in `Storable`.
+/// The server does not use or read anything from `Storable`, Clients may use its fields as
+/// required.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Storable {
+	/// Represents an encrypted and serialized `PlaintextBlob`. MUST encrypt the whole `PlaintextBlob`
+	/// using client-side encryption before setting here.
+	#[prost(bytes = "vec", tag = "1")]
+	pub data: ::prost::alloc::vec::Vec<u8>,
+	/// Represents encryption related metadata
+	#[prost(message, optional, tag = "2")]
+	pub encryption_metadata: ::core::option::Option<EncryptionMetadata>,
+}
+/// Represents encryption related metadata
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EncryptionMetadata {
+	/// The encryption algorithm used for encrypting the `PlaintextBlob`.
+	#[prost(string, tag = "1")]
+	pub cipher_format: ::prost::alloc::string::String,
+	/// The nonce used for encryption. Nonce is a random or unique value used to ensure that the same
+	/// plaintext results in different ciphertexts every time it is encrypted.
+	#[prost(bytes = "vec", tag = "2")]
+	pub nonce: ::prost::alloc::vec::Vec<u8>,
+	/// The authentication tag used for encryption. It provides integrity and authenticity assurance
+	/// for the encrypted data.
+	#[prost(bytes = "vec", tag = "3")]
+	pub tag: ::prost::alloc::vec::Vec<u8>,
+}
+/// Represents a data blob, which is encrypted, serialized and later used in `Storable.data`.
+/// Since the whole `Storable.data` is client-side encrypted, the server cannot understand this.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct PlaintextBlob {
+	/// The unencrypted value.
+	#[prost(bytes = "vec", tag = "1")]
+	pub value: ::prost::alloc::vec::Vec<u8>,
+	/// The version of the value. Can be used by client to verify version integrity.
+	#[prost(int64, tag = "2")]
+	pub version: i64,
 }
 /// ErrorCodes to be used in `ErrorResponse`
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]

@@ -18,3 +18,6 @@ pub mod error;
 
 /// Contains request/response types generated from the API definition of VSS.
 pub mod types;
+
+// Encryption-Decryption related crate-only helpers.
+pub(crate) mod crypto;

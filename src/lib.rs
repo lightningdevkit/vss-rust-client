@@ -9,6 +9,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
+#![deny(missing_docs)]
 
 /// Implements a thin-client ([`client::VssClient`]) to access a hosted instance of Versioned Storage Service (VSS).
 pub mod client;
@@ -18,6 +19,9 @@ pub mod error;
 
 /// Contains request/response types generated from the API definition of VSS.
 pub mod types;
+
+/// Contains utils for encryption, requests-retries etc.
+pub mod util;
 
 // Encryption-Decryption related crate-only helpers.
 pub(crate) mod crypto;

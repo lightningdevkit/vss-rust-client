@@ -174,6 +174,27 @@ mod tests {
 	}
 
 	#[tokio::test]
+	async fn test_get_response_without_value() {
+		let base_url = mockito::server_url();
+		let vss_client = VssClient::new(&base_url);
+
+		// GetObjectResponse with None value
+		let mock_response = GetObjectResponse { value: None, ..Default::default() };
+		let mock_server = mockito::mock("POST", GET_OBJECT_ENDPOINT)
+			.with_status(200)
+			.with_body(&mock_response.encode_to_vec())
+			.create();
+
+		let get_result = vss_client
+			.get_object(&GetObjectRequest { store_id: "store".to_string(), key: "k1".to_string() })
+			.await;
+		assert!(matches!(get_result.unwrap_err(), VssError::InternalServerError { .. }));
+
+		// Verify 1 request hit the server
+		mock_server.expect(1).assert();
+	}
+
+	#[tokio::test]
 	async fn test_invalid_request_err_handling() {
 		let base_url = mockito::server_url();
 		let vss_client = VssClient::new(&base_url);

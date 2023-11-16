@@ -35,6 +35,13 @@ impl VssClient {
 
 		if status.is_success() {
 			let response = GetObjectResponse::decode(&payload[..])?;
+
+			if response.value.is_none() {
+				return Err(VssError::InternalServerError(
+					"VSS Server API Violation, expected value in GetObjectResponse but found none".to_string(),
+				));
+			}
+
 			Ok(response)
 		} else {
 			Err(VssError::new(status, payload))

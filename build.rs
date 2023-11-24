@@ -1,17 +1,17 @@
-#[cfg(feature = "genproto")]
+#[cfg(genproto)]
 extern crate prost_build;
-#[cfg(feature = "genproto")]
+#[cfg(genproto)]
 use std::{env, fs, fs::File, path::Path};
 
 /// To generate updated proto objects:
 /// 1. Place `vss.proto` file in `src/proto/`
-/// 2. run `cargo build --features=genproto`
+/// 2. run `RUSTFLAGS="--cfg genproto" cargo build`
 fn main() {
-	#[cfg(feature = "genproto")]
+	#[cfg(genproto)]
 	generate_protos();
 }
 
-#[cfg(feature = "genproto")]
+#[cfg(genproto)]
 fn generate_protos() {
 	download_file(
 				"https://raw.githubusercontent.com/lightningdevkit/vss-server/cb1159c3b1835c66a857b25b114f15d18d2a4297/app/src/main/proto/vss.proto",
@@ -23,7 +23,7 @@ fn generate_protos() {
 	fs::copy(from_path, "src/types.rs").unwrap();
 }
 
-#[cfg(feature = "genproto")]
+#[cfg(genproto)]
 fn download_file(url: &str, save_to: &str) -> Result<(), Box<dyn std::error::Error>> {
 	let mut response = reqwest::blocking::get(url)?;
 	fs::create_dir_all(Path::new(save_to).parent().unwrap())?;

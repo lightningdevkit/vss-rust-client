@@ -15,13 +15,10 @@ build = "build.rs"
 prost = "0.11.6"
 reqwest = { version = "0.11.13", features = ["rustls-tls"] }
 
-[build-dependencies]
+[target.'cfg(genproto)'.build-dependencies]
 prost-build = { version = "0.11.3" }
 reqwest =  { version = "0.11.13", features = ["blocking"] }
 
 [dev-dependencies]
 mockito = "0.31.1"
 tokio = { version = "1.22.0", features = ["macros"]}
-
-[features]
-genproto = []

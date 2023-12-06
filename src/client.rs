@@ -20,6 +20,11 @@ impl VssClient {
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	pub fn new(base_url: &str) -> Self {
 		let client = Client::new();
+		Self::from_client(base_url, client)
+	}
+
+	/// Constructs a [`VssClient`] from a given [`reqwest::Client`], using `base_url` as the VSS server endpoint.
+	pub fn from_client(base_url: &str, client: Client) -> Self {
 		Self { base_url: String::from(base_url), client }
 	}
 

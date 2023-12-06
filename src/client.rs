@@ -28,6 +28,11 @@ impl VssClient {
 		Self { base_url: String::from(base_url), client }
 	}
 
+	/// Returns the underlying base URL.
+	pub fn base_url(&self) -> &str {
+		&self.base_url
+	}
+
 	/// Fetches a value against a given `key` in `request`.
 	/// Makes a service call to the `GetObject` endpoint of the VSS server.
 	/// For API contract/usage, refer to docs for [`GetObjectRequest`] and [`GetObjectResponse`].

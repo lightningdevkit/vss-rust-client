@@ -23,7 +23,8 @@ use std::time::Duration;
 /// let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100))
 /// 	.with_max_attempts(5)
 /// 	.with_max_total_delay(Duration::from_secs(2))
-/// 	.with_max_jitter(Duration::from_millis(30));
+/// 	.with_max_jitter(Duration::from_millis(30))
+/// 	.skip_retry_on_error(|e| matches!(e, VssError::InvalidRequestError(..)));
 ///
 /// let result = retry(operation, &retry_policy);
 ///```
@@ -78,6 +79,14 @@ pub trait RetryPolicy: Sized {
 	/// Returns a new `RetryPolicy` that adds jitter(random delay) to underlying policy.
 	fn with_max_jitter(self, max_jitter: Duration) -> JitteredRetryPolicy<Self> {
 		JitteredRetryPolicy { inner_policy: self, max_jitter }
+	}
+
+	/// Skips retrying on errors that evaluate to `true` after applying `function`.
+	fn skip_retry_on_error<F>(self, function: F) -> FilteredRetryPolicy<Self, F>
+	where
+		F: 'static + Fn(&Self::E) -> bool,
+	{
+		FilteredRetryPolicy { inner_policy: self, function }
 	}
 }
 
@@ -184,6 +193,28 @@ impl<T: RetryPolicy> RetryPolicy for JitteredRetryPolicy<T> {
 			Some(base_delay + jitter)
 		} else {
 			None
+		}
+	}
+}
+
+/// Decorates the given `RetryPolicy` by not retrying on errors that match the given function.
+pub struct FilteredRetryPolicy<T: RetryPolicy, F> {
+	inner_policy: T,
+	function: F,
+}
+
+impl<T, F, E> RetryPolicy for FilteredRetryPolicy<T, F>
+where
+	T: RetryPolicy<E = E>,
+	F: Fn(&E) -> bool,
+	E: Error,
+{
+	type E = T::E;
+	fn next_delay(&self, context: &RetryContext<E>) -> Option<Duration> {
+		if (self.function)(&context.error) {
+			None
+		} else {
+			self.inner_policy.next_delay(context)
 		}
 	}
 }

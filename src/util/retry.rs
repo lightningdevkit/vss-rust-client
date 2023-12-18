@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::error::Error;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -21,7 +22,8 @@ use std::time::Duration;
 /// #
 /// let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100))
 /// 	.with_max_attempts(5)
-///   .with_max_total_delay(Duration::from_secs(2));
+/// 	.with_max_total_delay(Duration::from_secs(2))
+/// 	.with_max_jitter(Duration::from_millis(30));
 ///
 /// let result = retry(operation, &retry_policy);
 ///```
@@ -71,6 +73,11 @@ pub trait RetryPolicy: Sized {
 	/// Returns a new `RetryPolicy` that respects the given total delay.
 	fn with_max_total_delay(self, max_total_delay: Duration) -> MaxTotalDelayRetryPolicy<Self> {
 		MaxTotalDelayRetryPolicy { inner_policy: self, max_total_delay }
+	}
+
+	/// Returns a new `RetryPolicy` that adds jitter(random delay) to underlying policy.
+	fn with_max_jitter(self, max_jitter: Duration) -> JitteredRetryPolicy<Self> {
+		JitteredRetryPolicy { inner_policy: self, max_jitter }
 	}
 }
 
@@ -156,5 +163,27 @@ impl<T: RetryPolicy> RetryPolicy for MaxTotalDelayRetryPolicy<T> {
 			}
 		}
 		next_delay
+	}
+}
+
+/// Decorates the given `RetryPolicy` and adds jitter (random delay) to it. This can make retries
+/// more spread out and less likely to all fail at once.
+pub struct JitteredRetryPolicy<T: RetryPolicy> {
+	/// The underlying retry policy to use.
+	inner_policy: T,
+	/// The maximum amount of random jitter to apply to the delay.
+	max_jitter: Duration,
+}
+
+impl<T: RetryPolicy> RetryPolicy for JitteredRetryPolicy<T> {
+	type E = T::E;
+	fn next_delay(&self, context: &RetryContext<Self::E>) -> Option<Duration> {
+		if let Some(base_delay) = self.inner_policy.next_delay(context) {
+			let mut rng = rand::thread_rng();
+			let jitter = Duration::from_micros(rng.gen_range(0..self.max_jitter.as_micros() as u64));
+			Some(base_delay + jitter)
+		} else {
+			None
+		}
 	}
 }

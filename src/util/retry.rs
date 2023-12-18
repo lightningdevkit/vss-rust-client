@@ -20,7 +20,8 @@ use std::time::Duration;
 /// # }
 /// #
 /// let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100))
-/// 	.with_max_attempts(5);
+/// 	.with_max_attempts(5)
+///   .with_max_total_delay(Duration::from_secs(2));
 ///
 /// let result = retry(operation, &retry_policy);
 ///```
@@ -65,6 +66,11 @@ pub trait RetryPolicy: Sized {
 	/// Returns a new `RetryPolicy` that respects the given maximum attempts.
 	fn with_max_attempts(self, max_attempts: u32) -> MaxAttemptsRetryPolicy<Self> {
 		MaxAttemptsRetryPolicy { inner_policy: self, max_attempts }
+	}
+
+	/// Returns a new `RetryPolicy` that respects the given total delay.
+	fn with_max_total_delay(self, max_total_delay: Duration) -> MaxTotalDelayRetryPolicy<Self> {
+		MaxTotalDelayRetryPolicy { inner_policy: self, max_total_delay }
 	}
 }
 
@@ -129,5 +135,26 @@ impl<T: RetryPolicy> RetryPolicy for MaxAttemptsRetryPolicy<T> {
 		} else {
 			self.inner_policy.next_delay(context)
 		}
+	}
+}
+
+/// Decorates the given `RetryPolicy` to respect the given maximum total delay.
+pub struct MaxTotalDelayRetryPolicy<T: RetryPolicy> {
+	/// The underlying retry policy to use.
+	inner_policy: T,
+	/// The maximum accumulated delay that will be allowed over all attempts.
+	max_total_delay: Duration,
+}
+
+impl<T: RetryPolicy> RetryPolicy for MaxTotalDelayRetryPolicy<T> {
+	type E = T::E;
+	fn next_delay(&self, context: &RetryContext<Self::E>) -> Option<Duration> {
+		let next_delay = self.inner_policy.next_delay(context);
+		if let Some(next_delay) = next_delay {
+			if self.max_total_delay < context.accumulated_delay + next_delay {
+				return None;
+			}
+		}
+		next_delay
 	}
 }

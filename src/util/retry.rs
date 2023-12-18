@@ -5,6 +5,9 @@ use std::time::Duration;
 
 /// A function that performs and retries the given operation according to a retry policy.
 ///
+/// **Caution**: A retry policy without the number of attempts capped by [`MaxAttemptsRetryPolicy`]
+/// decorator will result in infinite retries.
+///
 /// **Example**
 /// ```rust
 /// # use std::time::Duration;
@@ -16,7 +19,8 @@ use std::time::Duration;
 /// # 	Ok(42)
 /// # }
 /// #
-/// let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100));
+/// let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100))
+/// 	.with_max_attempts(5);
 ///
 /// let result = retry(operation, &retry_policy);
 ///```
@@ -57,6 +61,11 @@ pub trait RetryPolicy: Sized {
 	///
 	/// If `None` is returned then no further retry attempt is made.
 	fn next_delay(&self, context: &RetryContext<Self::E>) -> Option<Duration>;
+
+	/// Returns a new `RetryPolicy` that respects the given maximum attempts.
+	fn with_max_attempts(self, max_attempts: u32) -> MaxAttemptsRetryPolicy<Self> {
+		MaxAttemptsRetryPolicy { inner_policy: self, max_attempts }
+	}
 }
 
 /// Represents the context of a retry operation.
@@ -101,5 +110,24 @@ impl<E: Error> RetryPolicy for ExponentialBackoffRetryPolicy<E> {
 		let backoff_factor = 2_u32.pow(context.attempts_made) - 1;
 		let delay = self.base_delay * backoff_factor;
 		Some(delay)
+	}
+}
+
+/// Decorates the given `RetryPolicy` to respect the given maximum attempts.
+pub struct MaxAttemptsRetryPolicy<T: RetryPolicy> {
+	/// The underlying retry policy to use.
+	inner_policy: T,
+	/// The maximum number of attempts to retry.
+	max_attempts: u32,
+}
+
+impl<T: RetryPolicy> RetryPolicy for MaxAttemptsRetryPolicy<T> {
+	type E = T::E;
+	fn next_delay(&self, context: &RetryContext<Self::E>) -> Option<Duration> {
+		if self.max_attempts == context.attempts_made {
+			None
+		} else {
+			self.inner_policy.next_delay(context)
+		}
 	}
 }

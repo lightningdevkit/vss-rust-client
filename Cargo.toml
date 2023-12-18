@@ -14,6 +14,7 @@ build = "build.rs"
 [dependencies]
 prost = "0.11.6"
 reqwest = { version = "0.11.13", features = ["rustls-tls"] }
+tokio = { version = "1", default-features = false, features = ["time"] }
 
 [target.'cfg(genproto)'.build-dependencies]
 prost-build = { version = "0.11.3" }

@@ -12,6 +12,13 @@ pub struct StorableBuilder<T: EntropySource> {
 	entropy_source: T,
 }
 
+impl<T: EntropySource> StorableBuilder<T> {
+	/// Constructs a new instance.
+	pub fn new(data_encryption_key: [u8; 32], entropy_source: T) -> StorableBuilder<T> {
+		Self { data_encryption_key, entropy_source }
+	}
+}
+
 /// A trait representing a source for generating entropy/randomness.
 pub trait EntropySource {
 	/// Fills a buffer with random bytes.

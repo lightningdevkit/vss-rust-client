@@ -28,6 +28,28 @@ use std::time::Duration;
 ///
 /// let result = retry(operation, &retry_policy);
 ///```
+///
+/// To use a retry policy as a member in a [`Send`] & [`Sync`] safe struct which needs to have known
+/// size at compile time, we can specify its concrete type as follows:
+/// ```
+/// # use std::time::Duration;
+/// # use vss_client::error::VssError;
+/// # use vss_client::util::retry::{ExponentialBackoffRetryPolicy, FilteredRetryPolicy, retry, RetryPolicy};
+///
+/// type VssRetryPolicy = FilteredRetryPolicy<ExponentialBackoffRetryPolicy<VssError>, Box<dyn 'static + Send + Sync + Fn(&VssError) -> bool>>;
+///
+/// struct SomeStruct {
+/// 	retry_policy: VssRetryPolicy,
+/// }
+///
+/// impl SomeStruct {
+/// 	fn new() -> Self {
+/// 		let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(100))
+/// 			.skip_retry_on_error(Box::new(|e: &VssError| { matches!( e, VssError::NoSuchKeyError(..)) }) as _);
+/// 		Self { retry_policy }
+/// 	}
+/// }
+/// ```
 pub async fn retry<R, F, Fut, T, E>(mut operation: F, retry_policy: &R) -> Result<T, E>
 where
 	R: RetryPolicy<E = E>,

@@ -2,6 +2,7 @@
 mod tests {
 	use mockito::{self, Matcher};
 	use prost::Message;
+	use reqwest::header::CONTENT_TYPE;
 	use std::time::Duration;
 	use vss_client::client::VssClient;
 	use vss_client::error::VssError;
@@ -11,6 +12,8 @@ mod tests {
 		KeyValue, ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 	};
 	use vss_client::util::retry::{ExponentialBackoffRetryPolicy, RetryPolicy};
+
+	const APPLICATION_OCTET_STREAM: &'static str = "application/octet-stream";
 
 	const GET_OBJECT_ENDPOINT: &'static str = "/getObject";
 	const PUT_OBJECT_ENDPOINT: &'static str = "/putObjects";
@@ -31,6 +34,7 @@ mod tests {
 
 		// Register the mock endpoint with the mockito server.
 		let mock_server = mockito::mock("POST", GET_OBJECT_ENDPOINT)
+			.match_header(CONTENT_TYPE.as_str(), APPLICATION_OCTET_STREAM)
 			.match_body(get_request.encode_to_vec())
 			.with_status(200)
 			.with_body(mock_response.encode_to_vec())
@@ -64,6 +68,7 @@ mod tests {
 
 		// Register the mock endpoint with the mockito server.
 		let mock_server = mockito::mock("POST", PUT_OBJECT_ENDPOINT)
+			.match_header(CONTENT_TYPE.as_str(), APPLICATION_OCTET_STREAM)
 			.match_body(request.encode_to_vec())
 			.with_status(200)
 			.with_body(mock_response.encode_to_vec())
@@ -94,6 +99,7 @@ mod tests {
 
 		// Register the mock endpoint with the mockito server.
 		let mock_server = mockito::mock("POST", DELETE_OBJECT_ENDPOINT)
+			.match_header(CONTENT_TYPE.as_str(), APPLICATION_OCTET_STREAM)
 			.match_body(request.encode_to_vec())
 			.with_status(200)
 			.with_body(mock_response.encode_to_vec())
@@ -134,6 +140,7 @@ mod tests {
 
 		// Register the mock endpoint with the mockito server.
 		let mock_server = mockito::mock("POST", LIST_KEY_VERSIONS_ENDPOINT)
+			.match_header(CONTENT_TYPE.as_str(), APPLICATION_OCTET_STREAM)
 			.match_body(request.encode_to_vec())
 			.with_status(200)
 			.with_body(mock_response.encode_to_vec())

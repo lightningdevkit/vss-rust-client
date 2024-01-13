@@ -1,6 +1,8 @@
-use ::prost::Message;
+use prost::Message;
 use reqwest;
+use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
+use std::default::Default;
 
 use crate::error::VssError;
 use crate::types::{
@@ -8,6 +10,8 @@ use crate::types::{
 	ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 };
 use crate::util::retry::{retry, RetryPolicy};
+
+const APPLICATION_OCTET_STREAM: &str = "application/octet-stream";
 
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
 /// The provided [`VssClient`] API is minimalistic and is congruent to the VSS server-side API.
@@ -45,25 +49,15 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		retry(
 			|| async {
 				let url = format!("{}/getObject", self.base_url);
-
-				let request_body = request.encode_to_vec();
-				let raw_response = self.client.post(url).body(request_body).send().await?;
-				let status = raw_response.status();
-				let payload = raw_response.bytes().await?;
-
-				if status.is_success() {
-					let response = GetObjectResponse::decode(&payload[..])?;
-
+				self.post_request(request, &url).await.and_then(|response: GetObjectResponse| {
 					if response.value.is_none() {
-						return Err(VssError::InternalServerError(
+						Err(VssError::InternalServerError(
 							"VSS Server API Violation, expected value in GetObjectResponse but found none".to_string(),
-						));
+						))
+					} else {
+						Ok(response)
 					}
-
-					Ok(response)
-				} else {
-					Err(VssError::new(status, payload))
-				}
+				})
 			},
 			&self.retry_policy,
 		)
@@ -78,18 +72,7 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		retry(
 			|| async {
 				let url = format!("{}/putObjects", self.base_url);
-
-				let request_body = request.encode_to_vec();
-				let response_raw = self.client.post(&url).body(request_body).send().await?;
-				let status = response_raw.status();
-				let payload = response_raw.bytes().await?;
-
-				if status.is_success() {
-					let response = PutObjectResponse::decode(&payload[..])?;
-					Ok(response)
-				} else {
-					Err(VssError::new(status, payload))
-				}
+				self.post_request(request, &url).await
 			},
 			&self.retry_policy,
 		)
@@ -103,18 +86,7 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		retry(
 			|| async {
 				let url = format!("{}/deleteObject", self.base_url);
-
-				let request_body = request.encode_to_vec();
-				let response_raw = self.client.post(url).body(request_body).send().await?;
-				let status = response_raw.status();
-				let payload = response_raw.bytes().await?;
-
-				if status.is_success() {
-					let response = DeleteObjectResponse::decode(&payload[..])?;
-					Ok(response)
-				} else {
-					Err(VssError::new(status, payload))
-				}
+				self.post_request(request, &url).await
 			},
 			&self.retry_policy,
 		)
@@ -130,21 +102,30 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		retry(
 			|| async {
 				let url = format!("{}/listKeyVersions", self.base_url);
-
-				let request_body = request.encode_to_vec();
-				let response_raw = self.client.post(url).body(request_body).send().await?;
-				let status = response_raw.status();
-				let payload = response_raw.bytes().await?;
-
-				if status.is_success() {
-					let response = ListKeyVersionsResponse::decode(&payload[..])?;
-					Ok(response)
-				} else {
-					Err(VssError::new(status, payload))
-				}
+				self.post_request(request, &url).await
 			},
 			&self.retry_policy,
 		)
 		.await
+	}
+
+	async fn post_request<Rq: Message, Rs: Message + Default>(&self, request: &Rq, url: &str) -> Result<Rs, VssError> {
+		let request_body = request.encode_to_vec();
+		let response_raw = self
+			.client
+			.post(url)
+			.header(CONTENT_TYPE, APPLICATION_OCTET_STREAM)
+			.body(request_body)
+			.send()
+			.await?;
+		let status = response_raw.status();
+		let payload = response_raw.bytes().await?;
+
+		if status.is_success() {
+			let response = Rs::decode(&payload[..])?;
+			Ok(response)
+		} else {
+			Err(VssError::new(status, payload))
+		}
 	}
 }

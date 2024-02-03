@@ -126,7 +126,7 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 			.header_provider
 			.get_headers(&request_body)
 			.await
-			.and_then(get_headermap)
+			.and_then(|h| get_headermap(&h))
 			.map_err(|e| VssError::AuthError(e.to_string()))?;
 		let response_raw = self
 			.client

@@ -6,6 +6,12 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+#[cfg(feature = "lnurl-auth")]
+mod lnurl_auth_jwt;
+
+#[cfg(feature = "lnurl-auth")]
+pub use lnurl_auth_jwt::LnurlAuthToJwtProvider;
+
 /// Defines a trait around how headers are provided for each VSS request.
 #[async_trait]
 pub trait VssHeaderProvider {
@@ -25,6 +31,21 @@ pub enum VssHeaderProviderError {
 		/// The error message.
 		error: String,
 	},
+	/// An external request failed.
+	RequestError {
+		/// The error message.
+		error: String,
+	},
+	/// Authorization was refused.
+	AuthorizationError {
+		/// The error message.
+		error: String,
+	},
+	/// An application-level error occurred specific to the header provider functionality.
+	InternalError {
+		/// The error message.
+		error: String,
+	},
 }
 
 impl Display for VssHeaderProviderError {
@@ -32,6 +53,15 @@ impl Display for VssHeaderProviderError {
 		match self {
 			Self::InvalidData { error } => {
 				write!(f, "invalid data: {}", error)
+			}
+			Self::RequestError { error } => {
+				write!(f, "error performing external request: {}", error)
+			}
+			Self::AuthorizationError { error } => {
+				write!(f, "authorization was refused: {}", error)
+			}
+			Self::InternalError { error } => {
+				write!(f, "internal error: {}", error)
 			}
 		}
 	}
@@ -58,7 +88,7 @@ impl VssHeaderProvider for FixedHeaders {
 	}
 }
 
-pub(crate) fn get_headermap(headers: HashMap<String, String>) -> Result<HeaderMap, VssHeaderProviderError> {
+pub(crate) fn get_headermap(headers: &HashMap<String, String>) -> Result<HeaderMap, VssHeaderProviderError> {
 	let mut headermap = HeaderMap::new();
 	for (name, value) in headers {
 		headermap.insert(

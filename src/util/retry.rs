@@ -64,15 +64,17 @@ where
 			Ok(result) => return Ok(result),
 			Err(err) => {
 				attempts_made += 1;
-				if let Some(delay) =
-					retry_policy.next_delay(&RetryContext { attempts_made, accumulated_delay, error: &err })
-				{
+				if let Some(delay) = retry_policy.next_delay(&RetryContext {
+					attempts_made,
+					accumulated_delay,
+					error: &err,
+				}) {
 					tokio::time::sleep(delay).await;
 					accumulated_delay += delay;
 				} else {
 					return Err(err);
 				}
-			}
+			},
 		}
 	}
 }
@@ -211,7 +213,8 @@ impl<T: RetryPolicy> RetryPolicy for JitteredRetryPolicy<T> {
 	fn next_delay(&self, context: &RetryContext<Self::E>) -> Option<Duration> {
 		if let Some(base_delay) = self.inner_policy.next_delay(context) {
 			let mut rng = rand::thread_rng();
-			let jitter = Duration::from_micros(rng.gen_range(0..self.max_jitter.as_micros() as u64));
+			let jitter =
+				Duration::from_micros(rng.gen_range(0..self.max_jitter.as_micros() as u64));
 			Some(base_delay + jitter)
 		} else {
 			None

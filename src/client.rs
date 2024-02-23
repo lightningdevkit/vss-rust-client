@@ -6,8 +6,8 @@ use std::default::Default;
 
 use crate::error::VssError;
 use crate::types::{
-	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse, ListKeyVersionsRequest,
-	ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
+	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse,
+	ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 };
 use crate::util::retry::{retry, RetryPolicy};
 
@@ -45,7 +45,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Fetches a value against a given `key` in `request`.
 	/// Makes a service call to the `GetObject` endpoint of the VSS server.
 	/// For API contract/usage, refer to docs for [`GetObjectRequest`] and [`GetObjectResponse`].
-	pub async fn get_object(&self, request: &GetObjectRequest) -> Result<GetObjectResponse, VssError> {
+	pub async fn get_object(
+		&self, request: &GetObjectRequest,
+	) -> Result<GetObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/getObject", self.base_url);
@@ -68,7 +70,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Makes a service call to the `PutObject` endpoint of the VSS server, with multiple items.
 	/// Items in the `request` are written in a single all-or-nothing transaction.
 	/// For API contract/usage, refer to docs for [`PutObjectRequest`] and [`PutObjectResponse`].
-	pub async fn put_object(&self, request: &PutObjectRequest) -> Result<PutObjectResponse, VssError> {
+	pub async fn put_object(
+		&self, request: &PutObjectRequest,
+	) -> Result<PutObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/putObjects", self.base_url);
@@ -82,7 +86,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Deletes the given `key` and `value` in `request`.
 	/// Makes a service call to the `DeleteObject` endpoint of the VSS server.
 	/// For API contract/usage, refer to docs for [`DeleteObjectRequest`] and [`DeleteObjectResponse`].
-	pub async fn delete_object(&self, request: &DeleteObjectRequest) -> Result<DeleteObjectResponse, VssError> {
+	pub async fn delete_object(
+		&self, request: &DeleteObjectRequest,
+	) -> Result<DeleteObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/deleteObject", self.base_url);
@@ -109,7 +115,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		.await
 	}
 
-	async fn post_request<Rq: Message, Rs: Message + Default>(&self, request: &Rq, url: &str) -> Result<Rs, VssError> {
+	async fn post_request<Rq: Message, Rs: Message + Default>(
+		&self, request: &Rq, url: &str,
+	) -> Result<Rs, VssError> {
 		let request_body = request.encode_to_vec();
 		let response_raw = self
 			.client

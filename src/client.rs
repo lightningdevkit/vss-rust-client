@@ -8,8 +8,8 @@ use std::sync::Arc;
 use crate::error::VssError;
 use crate::headers::{get_headermap, FixedHeaders, VssHeaderProvider};
 use crate::types::{
-	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse, ListKeyVersionsRequest,
-	ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
+	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse,
+	ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 };
 use crate::util::retry::{retry, RetryPolicy};
 
@@ -37,13 +37,20 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 
 	/// Constructs a [`VssClient`] from a given [`reqwest::Client`], using `base_url` as the VSS server endpoint.
 	pub fn from_client(base_url: String, client: Client, retry_policy: R) -> Self {
-		Self { base_url, client, retry_policy, header_provider: Arc::new(FixedHeaders::new(HashMap::new())) }
+		Self {
+			base_url,
+			client,
+			retry_policy,
+			header_provider: Arc::new(FixedHeaders::new(HashMap::new())),
+		}
 	}
 
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	///
 	/// HTTP headers will be provided by the given `header_provider`.
-	pub fn new_with_headers(base_url: String, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>) -> Self {
+	pub fn new_with_headers(
+		base_url: String, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>,
+	) -> Self {
 		let client = Client::new();
 		Self { base_url, client, retry_policy, header_provider }
 	}
@@ -56,7 +63,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Fetches a value against a given `key` in `request`.
 	/// Makes a service call to the `GetObject` endpoint of the VSS server.
 	/// For API contract/usage, refer to docs for [`GetObjectRequest`] and [`GetObjectResponse`].
-	pub async fn get_object(&self, request: &GetObjectRequest) -> Result<GetObjectResponse, VssError> {
+	pub async fn get_object(
+		&self, request: &GetObjectRequest,
+	) -> Result<GetObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/getObject", self.base_url);
@@ -79,7 +88,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Makes a service call to the `PutObject` endpoint of the VSS server, with multiple items.
 	/// Items in the `request` are written in a single all-or-nothing transaction.
 	/// For API contract/usage, refer to docs for [`PutObjectRequest`] and [`PutObjectResponse`].
-	pub async fn put_object(&self, request: &PutObjectRequest) -> Result<PutObjectResponse, VssError> {
+	pub async fn put_object(
+		&self, request: &PutObjectRequest,
+	) -> Result<PutObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/putObjects", self.base_url);
@@ -93,7 +104,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Deletes the given `key` and `value` in `request`.
 	/// Makes a service call to the `DeleteObject` endpoint of the VSS server.
 	/// For API contract/usage, refer to docs for [`DeleteObjectRequest`] and [`DeleteObjectResponse`].
-	pub async fn delete_object(&self, request: &DeleteObjectRequest) -> Result<DeleteObjectResponse, VssError> {
+	pub async fn delete_object(
+		&self, request: &DeleteObjectRequest,
+	) -> Result<DeleteObjectResponse, VssError> {
 		retry(
 			|| async {
 				let url = format!("{}/deleteObject", self.base_url);
@@ -120,7 +133,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		.await
 	}
 
-	async fn post_request<Rq: Message, Rs: Message + Default>(&self, request: &Rq, url: &str) -> Result<Rs, VssError> {
+	async fn post_request<Rq: Message, Rs: Message + Default>(
+		&self, request: &Rq, url: &str,
+	) -> Result<Rs, VssError> {
 		let request_body = request.encode_to_vec();
 		let headermap = self
 			.header_provider

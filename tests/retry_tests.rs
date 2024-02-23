@@ -57,7 +57,8 @@ mod retry_tests {
 
 	#[tokio::test]
 	async fn test_retry_on_all_errors() {
-		let retry_policy = ExponentialBackoffRetryPolicy::new(Duration::from_millis(10)).with_max_attempts(3);
+		let retry_policy =
+			ExponentialBackoffRetryPolicy::new(Duration::from_millis(10)).with_max_attempts(3);
 
 		let call_count = Arc::new(AtomicU32::new(0));
 		let count = call_count.clone();

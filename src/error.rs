@@ -36,10 +36,12 @@ impl VssError {
 		match ErrorResponse::decode(&payload[..]) {
 			Ok(error_response) => VssError::from(error_response),
 			Err(e) => {
-				let message =
-					format!("Unable to decode ErrorResponse from server, HttpStatusCode: {}, DecodeErr: {}", status, e);
+				let message = format!(
+					"Unable to decode ErrorResponse from server, HttpStatusCode: {}, DecodeErr: {}",
+					status, e
+				);
 				VssError::InternalError(message)
-			}
+			},
 		}
 	}
 }
@@ -49,22 +51,22 @@ impl Display for VssError {
 		match self {
 			VssError::NoSuchKeyError(message) => {
 				write!(f, "Requested key does not exist: {}", message)
-			}
+			},
 			VssError::InvalidRequestError(message) => {
 				write!(f, "Request sent to VSS Storage was invalid: {}", message)
-			}
+			},
 			VssError::ConflictError(message) => {
 				write!(f, "Potential version conflict in write operation: {}", message)
-			}
+			},
 			VssError::AuthError(message) => {
 				write!(f, "Authentication or Authorization failure: {}", message)
-			}
+			},
 			VssError::InternalServerError(message) => {
 				write!(f, "InternalServerError: {}", message)
-			}
+			},
 			VssError::InternalError(message) => {
 				write!(f, "InternalError: {}", message)
-			}
+			},
 		}
 	}
 }
@@ -75,10 +77,14 @@ impl From<ErrorResponse> for VssError {
 	fn from(error_response: ErrorResponse) -> Self {
 		match error_response.error_code() {
 			ErrorCode::NoSuchKeyException => VssError::NoSuchKeyError(error_response.message),
-			ErrorCode::InvalidRequestException => VssError::InvalidRequestError(error_response.message),
+			ErrorCode::InvalidRequestException => {
+				VssError::InvalidRequestError(error_response.message)
+			},
 			ErrorCode::ConflictException => VssError::ConflictError(error_response.message),
 			ErrorCode::AuthException => VssError::AuthError(error_response.message),
-			ErrorCode::InternalServerException => VssError::InternalServerError(error_response.message),
+			ErrorCode::InternalServerException => {
+				VssError::InternalServerError(error_response.message)
+			},
 			_ => VssError::InternalError(format!(
 				"VSS responded with an unknown error code: {}, message: {}",
 				error_response.error_code, error_response.message

@@ -14,8 +14,9 @@ mod tests {
 	use vss_client::headers::VssHeaderProviderError;
 
 	use vss_client::types::{
-		DeleteObjectRequest, DeleteObjectResponse, ErrorCode, ErrorResponse, GetObjectRequest, GetObjectResponse,
-		KeyValue, ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
+		DeleteObjectRequest, DeleteObjectResponse, ErrorCode, ErrorResponse, GetObjectRequest,
+		GetObjectResponse, KeyValue, ListKeyVersionsRequest, ListKeyVersionsResponse,
+		PutObjectRequest, PutObjectResponse,
 	};
 	use vss_client::util::retry::{ExponentialBackoffRetryPolicy, RetryPolicy};
 
@@ -80,8 +81,10 @@ mod tests {
 			.create();
 
 		// Create a new VssClient with the mock server URL and fixed headers.
-		let header_provider =
-			Arc::new(FixedHeaders::new(HashMap::from([("headerkey".to_string(), "headervalue".to_string())])));
+		let header_provider = Arc::new(FixedHeaders::new(HashMap::from([(
+			"headerkey".to_string(),
+			"headervalue".to_string(),
+		)])));
 		let client = VssClient::new_with_headers(base_url, retry_policy(), header_provider);
 
 		let actual_result = client.get_object(&get_request).await.unwrap();
@@ -102,7 +105,11 @@ mod tests {
 		let request = PutObjectRequest {
 			store_id: "store".to_string(),
 			global_version: Some(4),
-			transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+			transaction_items: vec![KeyValue {
+				key: "k1".to_string(),
+				version: 2,
+				value: b"k1v3".to_vec(),
+			}],
 			delete_items: vec![],
 		};
 		let mock_response = PutObjectResponse::default();
@@ -134,7 +141,11 @@ mod tests {
 		// Set up the mock request/response.
 		let request = DeleteObjectRequest {
 			store_id: "store".to_string(),
-			key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+			key_value: Some(KeyValue {
+				key: "k1".to_string(),
+				version: 2,
+				value: b"k1v3".to_vec(),
+			}),
 		};
 		let mock_response = DeleteObjectResponse::default();
 
@@ -215,7 +226,10 @@ mod tests {
 			.create();
 
 		let get_result = vss_client
-			.get_object(&GetObjectRequest { store_id: "store".to_string(), key: "non_existent_key".to_string() })
+			.get_object(&GetObjectRequest {
+				store_id: "store".to_string(),
+				key: "non_existent_key".to_string(),
+			})
 			.await;
 		assert!(matches!(get_result.unwrap_err(), VssError::NoSuchKeyError { .. }));
 
@@ -268,7 +282,11 @@ mod tests {
 			.put_object(&PutObjectRequest {
 				store_id: "store".to_string(),
 				global_version: Some(4),
-				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				transaction_items: vec![KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}],
 				delete_items: vec![],
 			})
 			.await;
@@ -277,7 +295,11 @@ mod tests {
 		let delete_result = vss_client
 			.delete_object(&DeleteObjectRequest {
 				store_id: "store".to_string(),
-				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+				key_value: Some(KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}),
 			})
 			.await;
 		assert!(matches!(delete_result.unwrap_err(), VssError::InvalidRequestError { .. }));
@@ -302,8 +324,10 @@ mod tests {
 		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Invalid Request Error
-		let error_response =
-			ErrorResponse { error_code: ErrorCode::AuthException.into(), message: "AuthException".to_string() };
+		let error_response = ErrorResponse {
+			error_code: ErrorCode::AuthException.into(),
+			message: "AuthException".to_string(),
+		};
 		let mock_server = mockito::mock("POST", Matcher::Any)
 			.with_status(401)
 			.with_body(&error_response.encode_to_vec())
@@ -318,7 +342,11 @@ mod tests {
 			.put_object(&PutObjectRequest {
 				store_id: "store".to_string(),
 				global_version: Some(4),
-				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				transaction_items: vec![KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}],
 				delete_items: vec![],
 			})
 			.await;
@@ -327,7 +355,11 @@ mod tests {
 		let delete_result = vss_client
 			.delete_object(&DeleteObjectRequest {
 				store_id: "store".to_string(),
-				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+				key_value: Some(KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}),
 			})
 			.await;
 		assert!(matches!(delete_result.unwrap_err(), VssError::AuthError { .. }));
@@ -350,7 +382,9 @@ mod tests {
 
 	#[async_trait]
 	impl VssHeaderProvider for FailingHeaderProvider {
-		async fn get_headers(&self, _request: &[u8]) -> Result<HashMap<String, String>, VssHeaderProviderError> {
+		async fn get_headers(
+			&self, _request: &[u8],
+		) -> Result<HashMap<String, String>, VssHeaderProviderError> {
 			Err(VssHeaderProviderError::InvalidData { error: "test".to_string() })
 		}
 	}
@@ -359,7 +393,8 @@ mod tests {
 	async fn test_header_provider_error() {
 		let get_request = GetObjectRequest { store_id: "store".to_string(), key: "k1".to_string() };
 		let header_provider = Arc::new(FailingHeaderProvider {});
-		let client = VssClient::new_with_headers("notused".to_string(), retry_policy(), header_provider);
+		let client =
+			VssClient::new_with_headers("notused".to_string(), retry_policy(), header_provider);
 		let result = client.get_object(&get_request).await;
 
 		assert!(matches!(result, Err(VssError::AuthError { .. })));
@@ -371,8 +406,10 @@ mod tests {
 		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Conflict Error
-		let error_response =
-			ErrorResponse { error_code: ErrorCode::ConflictException.into(), message: "ConflictException".to_string() };
+		let error_response = ErrorResponse {
+			error_code: ErrorCode::ConflictException.into(),
+			message: "ConflictException".to_string(),
+		};
 		let mock_server = mockito::mock("POST", Matcher::Any)
 			.with_status(409)
 			.with_body(&error_response.encode_to_vec())
@@ -382,7 +419,11 @@ mod tests {
 			.put_object(&PutObjectRequest {
 				store_id: "store".to_string(),
 				global_version: Some(4),
-				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				transaction_items: vec![KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}],
 				delete_items: vec![],
 			})
 			.await;
@@ -416,7 +457,11 @@ mod tests {
 			.put_object(&PutObjectRequest {
 				store_id: "store".to_string(),
 				global_version: Some(4),
-				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				transaction_items: vec![KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}],
 				delete_items: vec![],
 			})
 			.await;
@@ -425,7 +470,11 @@ mod tests {
 		let delete_result = vss_client
 			.delete_object(&DeleteObjectRequest {
 				store_id: "store".to_string(),
-				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+				key_value: Some(KeyValue {
+					key: "k1".to_string(),
+					version: 2,
+					value: b"k1v3".to_vec(),
+				}),
 			})
 			.await;
 		assert!(matches!(delete_result.unwrap_err(), VssError::InternalServerError { .. }));
@@ -449,7 +498,8 @@ mod tests {
 		let base_url = mockito::server_url();
 		let vss_client = VssClient::new(base_url, retry_policy());
 
-		let error_response = ErrorResponse { error_code: 999, message: "UnknownException".to_string() };
+		let error_response =
+			ErrorResponse { error_code: 999, message: "UnknownException".to_string() };
 		let mut _mock_server = mockito::mock("POST", Matcher::Any)
 			.with_status(999)
 			.with_body(&error_response.encode_to_vec())
@@ -462,7 +512,11 @@ mod tests {
 		let put_request = PutObjectRequest {
 			store_id: "store".to_string(),
 			global_version: Some(4),
-			transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+			transaction_items: vec![KeyValue {
+				key: "k1".to_string(),
+				version: 2,
+				value: b"k1v3".to_vec(),
+			}],
 			delete_items: vec![],
 		};
 		let put_result = vss_client.put_object(&put_request).await;

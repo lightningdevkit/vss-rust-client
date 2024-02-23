@@ -34,7 +34,8 @@ mod lnurl_auth_jwt_tests {
 		// Initialize LNURL Auth JWT provider connecting to the mock server.
 		let addr = mockito::server_address();
 		let base_url = format!("http://localhost:{}", addr.port());
-		let lnurl_auth_jwt = LnurlAuthToJwtProvider::new(&[0; 32], base_url.clone(), HashMap::new()).unwrap();
+		let lnurl_auth_jwt =
+			LnurlAuthToJwtProvider::new(&[0; 32], base_url.clone(), HashMap::new()).unwrap();
 		{
 			// First request will be provided with an expired JWT token.
 			let k1 = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -67,7 +68,8 @@ mod lnurl_auth_jwt_tests {
 			// This will be cached.
 			let k1 = "1000000000000000000000000000000000000000000000000000000000000000";
 			let valid_jwt = jwt_with_expiry(
-				SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + 60 * 60 * 24 * 365,
+				SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs()
+					+ 60 * 60 * 24 * 365,
 			);
 			let lnurl = mockito::mock("GET", "/")
 				.expect(1)

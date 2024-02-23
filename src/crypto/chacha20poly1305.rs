@@ -48,7 +48,13 @@ mod real_chachapoly {
 			mac.input(aad);
 			ChaCha20Poly1305::pad_mac_16(&mut mac, aad.len());
 
-			ChaCha20Poly1305 { cipher, mac, finished: false, data_len: 0, aad_len: aad.len() as u64 }
+			ChaCha20Poly1305 {
+				cipher,
+				mac,
+				finished: false,
+				data_len: 0,
+				aad_len: aad.len() as u64,
+			}
 		}
 
 		pub fn encrypt(&mut self, input: &[u8], output: &mut [u8], out_tag: &mut [u8]) {

@@ -3,8 +3,8 @@ use base64::Engine;
 use mockito::Matcher;
 use serde_json::json;
 use std::time::SystemTime;
-use vss_client::headers::HeaderProvider;
 use vss_client::headers::LnurlAuthJwt;
+use vss_client::headers::VssHeaderProvider;
 
 const APPLICATION_JSON: &'static str = "application/json";
 
@@ -21,8 +21,9 @@ fn jwt_with_expiry(exp: u64) -> String {
 		"exp": exp,
 	})
 	.to_string();
+	let ignored = URL_SAFE_NO_PAD.encode("ignored");
 	let encoded = URL_SAFE_NO_PAD.encode(claims);
-	format!("ignoredheader.{}.ignoredsignature", encoded)
+	format!("{}.{}.{}", ignored, encoded, ignored)
 }
 
 #[tokio::test]
@@ -51,15 +52,11 @@ async fn test_lnurl_auth_jwt() {
 			.with_header(reqwest::header::CONTENT_TYPE.as_str(), APPLICATION_JSON)
 			.with_body(lnurl_auth_response(&expired_jwt))
 			.create();
-		assert_eq!(
-			lnurl_auth_jwt
-				.get_headers()
-				.await
-				.unwrap()
-				.get(reqwest::header::AUTHORIZATION)
-				.unwrap(),
-			format!("Bearer {}", expired_jwt).as_str(),
-		);
+		assert!(lnurl_auth_jwt
+			.get_headers()
+			.await
+			.unwrap()
+			.contains(&("authorization".to_string(), format!("Bearer {}", expired_jwt),)));
 		lnurl.assert();
 		lnurl_verification.assert();
 	}
@@ -86,24 +83,16 @@ async fn test_lnurl_auth_jwt() {
 			.with_header(reqwest::header::CONTENT_TYPE.as_str(), APPLICATION_JSON)
 			.with_body(lnurl_auth_response(&valid_jwt))
 			.create();
-		assert_eq!(
-			lnurl_auth_jwt
-				.get_headers()
-				.await
-				.unwrap()
-				.get(reqwest::header::AUTHORIZATION)
-				.unwrap(),
-			format!("Bearer {}", valid_jwt).as_str(),
-		);
-		assert_eq!(
-			lnurl_auth_jwt
-				.get_headers()
-				.await
-				.unwrap()
-				.get(reqwest::header::AUTHORIZATION)
-				.unwrap(),
-			format!("Bearer {}", valid_jwt).as_str(),
-		);
+		assert!(lnurl_auth_jwt
+			.get_headers()
+			.await
+			.unwrap()
+			.contains(&("authorization".to_string(), format!("Bearer {}", valid_jwt),)));
+		assert!(lnurl_auth_jwt
+			.get_headers()
+			.await
+			.unwrap()
+			.contains(&("authorization".to_string(), format!("Bearer {}", valid_jwt),)));
 		lnurl.assert();
 		lnurl_verification.assert();
 	}

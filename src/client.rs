@@ -1,14 +1,13 @@
 use prost::Message;
-use reqwest;
-use reqwest::header::HeaderMap;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 use std::default::Default;
 use std::sync::Arc;
 
 use crate::error::VssError;
+use crate::headers::get_headermap;
 use crate::headers::FixedHeaders;
-use crate::headers::HeaderProvider;
+use crate::headers::VssHeaderProvider;
 use crate::types::{
 	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse, ListKeyVersionsRequest,
 	ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
@@ -27,7 +26,7 @@ where
 	base_url: String,
 	client: Client,
 	retry_policy: R,
-	header_provider: Arc<dyn HeaderProvider>,
+	header_provider: Arc<dyn VssHeaderProvider>,
 }
 
 impl<R: RetryPolicy<E = VssError>> VssClient<R> {
@@ -43,13 +42,13 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 			base_url: String::from(base_url),
 			client,
 			retry_policy,
-			header_provider: Arc::new(FixedHeaders::new(HeaderMap::new())),
+			header_provider: Arc::new(FixedHeaders::new(Vec::new())),
 		}
 	}
 
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	/// HTTP headers will be provided by the given `header_provider`.
-	pub fn new_with_headers(base_url: &str, retry_policy: R, header_provider: Arc<dyn HeaderProvider>) -> Self {
+	pub fn new_with_headers(base_url: &str, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>) -> Self {
 		let client = Client::new();
 		Self { base_url: String::from(base_url), client, retry_policy, header_provider }
 	}
@@ -133,11 +132,12 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 			.get_headers()
 			.await
 			.map_err(|e| VssError::InternalError(e.to_string()))?;
+		let headermap = get_headermap(&headers).map_err(VssError::InternalError)?;
 		let response_raw = self
 			.client
 			.post(url)
 			.header(CONTENT_TYPE, APPLICATION_OCTET_STREAM)
-			.headers(headers)
+			.headers(headermap)
 			.body(request_body)
 			.send()
 			.await?;

@@ -2,6 +2,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use mockito::Matcher;
 use serde_json::json;
+use std::collections::HashMap;
 use std::time::SystemTime;
 use vss_client::headers::LnurlAuthJwt;
 use vss_client::headers::VssHeaderProvider;
@@ -31,7 +32,7 @@ async fn test_lnurl_auth_jwt() {
 	// Initialize LNURL Auth JWT provider connecting to the mock server.
 	let addr = mockito::server_address();
 	let base_url = format!("http://localhost:{}", addr.port());
-	let lnurl_auth_jwt = LnurlAuthJwt::new(&[0; 32], base_url.clone(), Vec::new()).unwrap();
+	let lnurl_auth_jwt = LnurlAuthJwt::new(&[0; 32], base_url.clone(), HashMap::new()).unwrap();
 	{
 		// First request will be provided with an expired JWT token.
 		let k1 = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -52,11 +53,10 @@ async fn test_lnurl_auth_jwt() {
 			.with_header(reqwest::header::CONTENT_TYPE.as_str(), APPLICATION_JSON)
 			.with_body(lnurl_auth_response(&expired_jwt))
 			.create();
-		assert!(lnurl_auth_jwt
-			.get_headers()
-			.await
-			.unwrap()
-			.contains(&("authorization".to_string(), format!("Bearer {}", expired_jwt),)));
+		assert_eq!(
+			lnurl_auth_jwt.get_headers().await.unwrap().get("authorization").unwrap(),
+			&format!("Bearer {}", expired_jwt),
+		);
 		lnurl.assert();
 		lnurl_verification.assert();
 	}
@@ -83,16 +83,14 @@ async fn test_lnurl_auth_jwt() {
 			.with_header(reqwest::header::CONTENT_TYPE.as_str(), APPLICATION_JSON)
 			.with_body(lnurl_auth_response(&valid_jwt))
 			.create();
-		assert!(lnurl_auth_jwt
-			.get_headers()
-			.await
-			.unwrap()
-			.contains(&("authorization".to_string(), format!("Bearer {}", valid_jwt),)));
-		assert!(lnurl_auth_jwt
-			.get_headers()
-			.await
-			.unwrap()
-			.contains(&("authorization".to_string(), format!("Bearer {}", valid_jwt),)));
+		assert_eq!(
+			lnurl_auth_jwt.get_headers().await.unwrap().get("authorization").unwrap(),
+			&format!("Bearer {}", valid_jwt),
+		);
+		assert_eq!(
+			lnurl_auth_jwt.get_headers().await.unwrap().get("authorization").unwrap(),
+			&format!("Bearer {}", valid_jwt),
+		);
 		lnurl.assert();
 		lnurl_verification.assert();
 	}

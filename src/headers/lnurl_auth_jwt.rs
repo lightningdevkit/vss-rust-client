@@ -13,6 +13,7 @@ use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::Network;
 use bitcoin::PrivateKey;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::SystemTime;
 use url::Url;
@@ -55,7 +56,7 @@ pub struct LnurlAuthJwt {
 	engine: Secp256k1<All>,
 	parent_key: ExtendedPrivKey,
 	url: String,
-	default_headers: Vec<(String, String)>,
+	default_headers: HashMap<String, String>,
 	client: reqwest::Client,
 	jwt_token: RwLock<Option<JwtToken>>,
 }
@@ -69,7 +70,7 @@ impl LnurlAuthJwt {
 	/// The given set of headers will be used for LNURL requests, and will also be returned together
 	/// with the JWT authorization header for VSS requests.
 	pub fn new(
-		seed: &[u8], url: String, default_headers: Vec<(String, String)>,
+		seed: &[u8], url: String, default_headers: HashMap<String, String>,
 	) -> Result<LnurlAuthJwt, VssHeaderProviderError> {
 		let engine = Secp256k1::new();
 		let master = ExtendedPrivKey::new_master(Network::Testnet, seed).map_err(VssHeaderProviderError::from)?;
@@ -148,10 +149,10 @@ impl LnurlAuthJwt {
 
 #[async_trait]
 impl VssHeaderProvider for LnurlAuthJwt {
-	async fn get_headers(&self) -> Result<Vec<(String, String)>, VssHeaderProviderError> {
+	async fn get_headers(&self) -> Result<HashMap<String, String>, VssHeaderProviderError> {
 		let jwt_token = self.get_jwt_token(false).await?;
 		let mut headers = self.default_headers.clone();
-		headers.push((AUTHORIZATION.to_string(), format!("Bearer {}", jwt_token)));
+		headers.insert(AUTHORIZATION.to_string(), format!("Bearer {}", jwt_token));
 		Ok(headers)
 	}
 }

@@ -1,6 +1,7 @@
 use prost::Message;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
+use std::collections::HashMap;
 use std::default::Default;
 use std::sync::Arc;
 
@@ -42,7 +43,7 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 			base_url: String::from(base_url),
 			client,
 			retry_policy,
-			header_provider: Arc::new(FixedHeaders::new(Vec::new())),
+			header_provider: Arc::new(FixedHeaders::new(HashMap::new())),
 		}
 	}
 

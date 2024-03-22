@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use reqwest::header::HeaderMap;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -51,29 +52,29 @@ impl Error for VssHeaderProviderError {}
 pub trait VssHeaderProvider {
 	/// Returns the HTTP headers to be used for a VSS request.
 	/// This method is called on each request, and should likely perform some form of caching.
-	async fn get_headers(&self) -> Result<Vec<(String, String)>, VssHeaderProviderError>;
+	async fn get_headers(&self) -> Result<HashMap<String, String>, VssHeaderProviderError>;
 }
 
 /// A header provider returning an given, fixed set of headers.
 pub struct FixedHeaders {
-	headers: Vec<(String, String)>,
+	headers: HashMap<String, String>,
 }
 
 impl FixedHeaders {
 	/// Creates a new header provider returning the given, fixed set of headers.
-	pub fn new(headers: Vec<(String, String)>) -> FixedHeaders {
+	pub fn new(headers: HashMap<String, String>) -> FixedHeaders {
 		FixedHeaders { headers }
 	}
 }
 
 #[async_trait]
 impl VssHeaderProvider for FixedHeaders {
-	async fn get_headers(&self) -> Result<Vec<(String, String)>, VssHeaderProviderError> {
+	async fn get_headers(&self) -> Result<HashMap<String, String>, VssHeaderProviderError> {
 		Ok(self.headers.clone())
 	}
 }
 
-pub(crate) fn get_headermap(headers: &Vec<(String, String)>) -> Result<HeaderMap, String> {
+pub(crate) fn get_headermap(headers: &HashMap<String, String>) -> Result<HeaderMap, String> {
 	let mut headermap = HeaderMap::new();
 	for (name, value) in headers {
 		headermap.insert(

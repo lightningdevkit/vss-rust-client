@@ -1,7 +1,6 @@
 use crate::headers::get_headermap;
 use crate::headers::VssHeaderProvider;
 use crate::headers::VssHeaderProviderError;
-use crate::util::string::UntrustedString;
 use async_trait::async_trait;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -91,7 +90,7 @@ impl LnurlAuthJwt {
 
 	async fn fetch_jwt_token(&self) -> Result<JwtToken, VssHeaderProviderError> {
 		// Fetch the LNURL.
-		let lnurl_str = UntrustedString::new(
+		let lnurl_str =
 			self.client
 				.get(&self.url)
 				.send()
@@ -99,8 +98,8 @@ impl LnurlAuthJwt {
 				.map_err(VssHeaderProviderError::from)?
 				.text()
 				.await
-				.map_err(VssHeaderProviderError::from)?,
-		);
+				.map_err(VssHeaderProviderError::from)?
+		;
 
 		// Sign the LNURL and perform the request.
 		let signed_lnurl = sign_lnurl(&self.engine, &self.parent_key, &lnurl_str)?;
@@ -118,7 +117,7 @@ impl LnurlAuthJwt {
 			LnurlAuthResponse { token: Some(token), .. } => token,
 			LnurlAuthResponse { reason: Some(reason), .. } => {
 				return Err(VssHeaderProviderError::ApplicationError {
-					error: format!("LNURL Auth failed, reason is: {}", reason),
+					error: format!("LNURL Auth failed, reason is: {}", reason.escape_debug()),
 				});
 			}
 			_ => {
@@ -177,10 +176,10 @@ fn linking_key_path(hashing_key: &PrivateKey, domain_name: &str) -> Result<Deriv
 }
 
 fn sign_lnurl(
-	engine: &Secp256k1<All>, parent_key: &ExtendedPrivKey, lnurl_str: &UntrustedString,
+	engine: &Secp256k1<All>, parent_key: &ExtendedPrivKey, lnurl_str: &str,
 ) -> Result<String, VssHeaderProviderError> {
 	// Parse k1 parameter to sign.
-	let invalid_lnurl = || VssHeaderProviderError::InvalidData { error: format!("invalid lnurl: {}", lnurl_str) };
+	let invalid_lnurl = || VssHeaderProviderError::InvalidData { error: format!("invalid lnurl: {}", lnurl_str.escape_debug()) };
 	let mut lnurl = Url::parse(lnurl_str).map_err(|_| invalid_lnurl())?;
 	let domain = lnurl.domain().ok_or(invalid_lnurl())?;
 	let k1_str = lnurl
@@ -213,8 +212,8 @@ fn sign_lnurl(
 
 #[derive(Deserialize, Debug, Clone)]
 struct LnurlAuthResponse {
-	reason: Option<UntrustedString>,
-	token: Option<UntrustedString>,
+	reason: Option<String>,
+	token: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -222,9 +221,9 @@ struct ExpiryClaim {
 	exp: Option<u64>,
 }
 
-fn parse_jwt_token(jwt_token: UntrustedString) -> Result<JwtToken, VssHeaderProviderError> {
+fn parse_jwt_token(jwt_token: String) -> Result<JwtToken, VssHeaderProviderError> {
 	let parts: Vec<&str> = jwt_token.split('.').collect();
-	let invalid = || VssHeaderProviderError::InvalidData { error: format!("invalid JWT token: {}", jwt_token) };
+	let invalid = || VssHeaderProviderError::InvalidData { error: format!("invalid JWT token: {}", jwt_token.escape_debug()) };
 	if parts.len() != 3 {
 		return Err(invalid());
 	}
@@ -232,7 +231,7 @@ fn parse_jwt_token(jwt_token: UntrustedString) -> Result<JwtToken, VssHeaderProv
 	let bytes = URL_SAFE_NO_PAD.decode(parts[1]).map_err(|_| invalid())?;
 	let _ = URL_SAFE_NO_PAD.decode(parts[2]).map_err(|_| invalid())?;
 	let claim: ExpiryClaim = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
-	Ok(JwtToken { token_str: jwt_token.into_inner(), expiry: claim.exp })
+	Ok(JwtToken { token_str: jwt_token, expiry: claim.exp })
 }
 
 impl From<bitcoin::bip32::Error> for VssHeaderProviderError {
@@ -250,7 +249,6 @@ impl From<reqwest::Error> for VssHeaderProviderError {
 #[cfg(test)]
 mod test {
 	use crate::headers::lnurl_auth_jwt::{linking_key_path, sign_lnurl};
-	use crate::util::string::UntrustedString;
 	use bitcoin::bip32::ExtendedPrivKey;
 	use bitcoin::hashes::hex::FromHex;
 	use bitcoin::secp256k1::Secp256k1;
@@ -281,7 +279,7 @@ mod test {
 		let signed = sign_lnurl(
 			&engine,
 			&master,
-			&UntrustedString::new("https://example.com/path?tag=login&k1=e2af6254a8df433264fa23f67eb8188635d15ce883e8fc020989d5f82ae6f11e".to_string()),
+			"https://example.com/path?tag=login&k1=e2af6254a8df433264fa23f67eb8188635d15ce883e8fc020989d5f82ae6f11e",
 		)
 		.unwrap();
 		assert_eq!(

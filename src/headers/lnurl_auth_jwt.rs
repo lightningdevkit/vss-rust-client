@@ -13,7 +13,6 @@ use bitcoin::secp256k1::{All, Message, Secp256k1};
 use bitcoin::Network;
 use bitcoin::PrivateKey;
 use serde::Deserialize;
-use std::ops::Deref;
 use std::sync::RwLock;
 use std::time::SystemTime;
 use url::Url;
@@ -37,6 +36,17 @@ const AUTHORIZATION: &str = "authorization";
 struct JwtToken {
 	token_str: String,
 	expiry: Option<u64>,
+}
+
+impl JwtToken {
+	fn is_expired(&self) -> bool {
+		self.expiry
+			.map(|expiry| {
+				SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + EXPIRY_BUFFER_SECS
+					> expiry
+			})
+			.unwrap_or(false)
+	}
 }
 
 /// Provides a JWT token based on LNURL Auth.
@@ -120,28 +130,19 @@ impl LnurlAuthJwt {
 	}
 
 	async fn get_jwt_token(&self, force_refresh: bool) -> Result<String, VssHeaderProviderError> {
-		if !self.is_expired() && !force_refresh {
+		let cached_token_str = if force_refresh {
+			None
+		} else {
 			let jwt_token = self.jwt_token.read().unwrap();
-			if let Some(jwt_token) = jwt_token.deref() {
-				return Ok(jwt_token.token_str.clone());
-			}
+			jwt_token.as_ref().filter(|t| !t.is_expired()).map(|t| t.token_str.clone())
+		};
+		if let Some(token_str) = cached_token_str {
+			Ok(token_str)
+		} else {
+			let jwt_token = self.fetch_jwt_token().await?;
+			*self.jwt_token.write().unwrap() = Some(jwt_token.clone());
+			Ok(jwt_token.token_str)
 		}
-		let jwt_token = self.fetch_jwt_token().await?;
-		*self.jwt_token.write().unwrap() = Some(jwt_token.clone());
-		Ok(jwt_token.token_str)
-	}
-
-	fn is_expired(&self) -> bool {
-		self.jwt_token
-			.read()
-			.unwrap()
-			.as_ref()
-			.and_then(|token| token.expiry)
-			.map(|expiry| {
-				SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() + EXPIRY_BUFFER_SECS
-					> expiry
-			})
-			.unwrap_or(false)
 	}
 }
 

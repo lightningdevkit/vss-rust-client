@@ -90,16 +90,15 @@ impl LnurlAuthJwt {
 
 	async fn fetch_jwt_token(&self) -> Result<JwtToken, VssHeaderProviderError> {
 		// Fetch the LNURL.
-		let lnurl_str =
-			self.client
-				.get(&self.url)
-				.send()
-				.await
-				.map_err(VssHeaderProviderError::from)?
-				.text()
-				.await
-				.map_err(VssHeaderProviderError::from)?
-		;
+		let lnurl_str = self
+			.client
+			.get(&self.url)
+			.send()
+			.await
+			.map_err(VssHeaderProviderError::from)?
+			.text()
+			.await
+			.map_err(VssHeaderProviderError::from)?;
 
 		// Sign the LNURL and perform the request.
 		let signed_lnurl = sign_lnurl(&self.engine, &self.parent_key, &lnurl_str)?;
@@ -179,7 +178,8 @@ fn sign_lnurl(
 	engine: &Secp256k1<All>, parent_key: &ExtendedPrivKey, lnurl_str: &str,
 ) -> Result<String, VssHeaderProviderError> {
 	// Parse k1 parameter to sign.
-	let invalid_lnurl = || VssHeaderProviderError::InvalidData { error: format!("invalid lnurl: {}", lnurl_str.escape_debug()) };
+	let invalid_lnurl =
+		|| VssHeaderProviderError::InvalidData { error: format!("invalid lnurl: {}", lnurl_str.escape_debug()) };
 	let mut lnurl = Url::parse(lnurl_str).map_err(|_| invalid_lnurl())?;
 	let domain = lnurl.domain().ok_or(invalid_lnurl())?;
 	let k1_str = lnurl
@@ -223,7 +223,8 @@ struct ExpiryClaim {
 
 fn parse_jwt_token(jwt_token: String) -> Result<JwtToken, VssHeaderProviderError> {
 	let parts: Vec<&str> = jwt_token.split('.').collect();
-	let invalid = || VssHeaderProviderError::InvalidData { error: format!("invalid JWT token: {}", jwt_token.escape_debug()) };
+	let invalid =
+		|| VssHeaderProviderError::InvalidData { error: format!("invalid JWT token: {}", jwt_token.escape_debug()) };
 	if parts.len() != 3 {
 		return Err(invalid());
 	}

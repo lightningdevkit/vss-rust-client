@@ -19,6 +19,9 @@ pub enum VssError {
 	/// Please refer to [`ErrorCode::ConflictException`].
 	ConflictError(String),
 
+	/// Please refer to [`ErrorCode::AuthException`].
+	AuthError(String),
+
 	/// Please refer to [`ErrorCode::InternalServerException`].
 	InternalServerError(String),
 
@@ -53,6 +56,9 @@ impl Display for VssError {
 			VssError::ConflictError(message) => {
 				write!(f, "Potential version conflict in write operation: {}", message)
 			}
+			VssError::AuthError(message) => {
+				write!(f, "Authentication or Authorization failure: {}", message)
+			}
 			VssError::InternalServerError(message) => {
 				write!(f, "InternalServerError: {}", message)
 			}
@@ -71,6 +77,7 @@ impl From<ErrorResponse> for VssError {
 			ErrorCode::NoSuchKeyException => VssError::NoSuchKeyError(error_response.message),
 			ErrorCode::InvalidRequestException => VssError::InvalidRequestError(error_response.message),
 			ErrorCode::ConflictException => VssError::ConflictError(error_response.message),
+			ErrorCode::AuthException => VssError::AuthError(error_response.message),
 			ErrorCode::InternalServerException => VssError::InternalServerError(error_response.message),
 			_ => VssError::InternalError(format!(
 				"VSS responded with an unknown error code: {}, message: {}",

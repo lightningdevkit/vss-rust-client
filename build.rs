@@ -14,7 +14,7 @@ fn main() {
 #[cfg(genproto)]
 fn generate_protos() {
 	download_file(
-				"https://raw.githubusercontent.com/lightningdevkit/vss-server/cb1159c3b1835c66a857b25b114f15d18d2a4297/app/src/main/proto/vss.proto",
+				"https://raw.githubusercontent.com/lightningdevkit/vss-server/7f492fcac0c561b212f49ca40f7d16075822440f/app/src/main/proto/vss.proto",
 				"src/proto/vss.proto",
 		).unwrap();
 

@@ -348,6 +348,8 @@ pub enum ErrorCode {
 	InternalServerException = 3,
 	/// Used when the specified `key` in a `GetObjectRequest` does not exist.
 	NoSuchKeyException = 4,
+	/// Used when authentication fails or in case of an unauthorized request.
+	AuthException = 5,
 }
 impl ErrorCode {
 	/// String value of the enum field names used in the ProtoBuf definition.
@@ -361,6 +363,7 @@ impl ErrorCode {
 			ErrorCode::InvalidRequestException => "INVALID_REQUEST_EXCEPTION",
 			ErrorCode::InternalServerException => "INTERNAL_SERVER_EXCEPTION",
 			ErrorCode::NoSuchKeyException => "NO_SUCH_KEY_EXCEPTION",
+			ErrorCode::AuthException => "AUTH_EXCEPTION",
 		}
 	}
 	/// Creates an enum from field names used in the ProtoBuf definition.
@@ -371,6 +374,7 @@ impl ErrorCode {
 			"INVALID_REQUEST_EXCEPTION" => Some(Self::InvalidRequestException),
 			"INTERNAL_SERVER_EXCEPTION" => Some(Self::InternalServerException),
 			"NO_SUCH_KEY_EXCEPTION" => Some(Self::NoSuchKeyException),
+			"AUTH_EXCEPTION" => Some(Self::AuthException),
 			_ => None,
 		}
 	}

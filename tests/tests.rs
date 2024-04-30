@@ -256,6 +256,56 @@ mod tests {
 	}
 
 	#[tokio::test]
+	async fn test_auth_err_handling() {
+		let base_url = mockito::server_url();
+		let vss_client = VssClient::new(&base_url, retry_policy());
+
+		// Invalid Request Error
+		let error_response =
+			ErrorResponse { error_code: ErrorCode::AuthException.into(), message: "AuthException".to_string() };
+		let mock_server = mockito::mock("POST", Matcher::Any)
+			.with_status(401)
+			.with_body(&error_response.encode_to_vec())
+			.create();
+
+		let get_result = vss_client
+			.get_object(&GetObjectRequest { store_id: "store".to_string(), key: "k1".to_string() })
+			.await;
+		assert!(matches!(get_result.unwrap_err(), VssError::AuthError { .. }));
+
+		let put_result = vss_client
+			.put_object(&PutObjectRequest {
+				store_id: "store".to_string(),
+				global_version: Some(4),
+				transaction_items: vec![KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }],
+				delete_items: vec![],
+			})
+			.await;
+		assert!(matches!(put_result.unwrap_err(), VssError::AuthError { .. }));
+
+		let delete_result = vss_client
+			.delete_object(&DeleteObjectRequest {
+				store_id: "store".to_string(),
+				key_value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v3".to_vec() }),
+			})
+			.await;
+		assert!(matches!(delete_result.unwrap_err(), VssError::AuthError { .. }));
+
+		let list_result = vss_client
+			.list_key_versions(&ListKeyVersionsRequest {
+				store_id: "store".to_string(),
+				page_size: Some(5),
+				page_token: None,
+				key_prefix: Some("k".into()),
+			})
+			.await;
+		assert!(matches!(list_result.unwrap_err(), VssError::AuthError { .. }));
+
+		// Verify 4 requests hit the server
+		mock_server.expect(4).assert();
+	}
+
+	#[tokio::test]
 	async fn test_conflict_err_handling() {
 		let base_url = mockito::server_url();
 		let vss_client = VssClient::new(&base_url, retry_policy());
@@ -401,7 +451,10 @@ mod tests {
 			.skip_retry_on_error(|e| {
 				matches!(
 					e,
-					VssError::NoSuchKeyError(..) | VssError::InvalidRequestError(..) | VssError::ConflictError(..)
+					VssError::NoSuchKeyError(..)
+						| VssError::InvalidRequestError(..)
+						| VssError::ConflictError(..)
+						| VssError::AuthError(..)
 				)
 			})
 	}

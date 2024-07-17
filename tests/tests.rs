@@ -1,11 +1,17 @@
 #[cfg(test)]
 mod tests {
+	use async_trait::async_trait;
 	use mockito::{self, Matcher};
 	use prost::Message;
 	use reqwest::header::CONTENT_TYPE;
+	use std::collections::HashMap;
+	use std::sync::Arc;
 	use std::time::Duration;
 	use vss_client::client::VssClient;
 	use vss_client::error::VssError;
+	use vss_client::headers::FixedHeaders;
+	use vss_client::headers::VssHeaderProvider;
+	use vss_client::headers::VssHeaderProviderError;
 
 	use vss_client::types::{
 		DeleteObjectRequest, DeleteObjectResponse, ErrorCode, ErrorResponse, GetObjectRequest, GetObjectResponse,
@@ -41,7 +47,42 @@ mod tests {
 			.create();
 
 		// Create a new VssClient with the mock server URL.
-		let client = VssClient::new(&base_url, retry_policy());
+		let client = VssClient::new(base_url, retry_policy());
+
+		let actual_result = client.get_object(&get_request).await.unwrap();
+
+		let expected_result = &mock_response;
+		assert_eq!(actual_result, *expected_result);
+
+		// Verify server endpoint was called exactly once.
+		mock_server.expect(1).assert();
+	}
+
+	#[tokio::test]
+	async fn test_get_with_headers() {
+		// Spin-up mock server with mock response for given request.
+		let base_url = mockito::server_url().to_string();
+
+		// Set up the mock request/response.
+		let get_request = GetObjectRequest { store_id: "store".to_string(), key: "k1".to_string() };
+		let mock_response = GetObjectResponse {
+			value: Some(KeyValue { key: "k1".to_string(), version: 2, value: b"k1v2".to_vec() }),
+			..Default::default()
+		};
+
+		// Register the mock endpoint with the mockito server and provide expected headers.
+		let mock_server = mockito::mock("POST", GET_OBJECT_ENDPOINT)
+			.match_header(CONTENT_TYPE.as_str(), APPLICATION_OCTET_STREAM)
+			.match_header("headerkey", "headervalue")
+			.match_body(get_request.encode_to_vec())
+			.with_status(200)
+			.with_body(mock_response.encode_to_vec())
+			.create();
+
+		// Create a new VssClient with the mock server URL and fixed headers.
+		let header_provider =
+			Arc::new(FixedHeaders::new(HashMap::from([("headerkey".to_string(), "headervalue".to_string())])));
+		let client = VssClient::new_with_headers(base_url, retry_policy(), header_provider);
 
 		let actual_result = client.get_object(&get_request).await.unwrap();
 
@@ -75,7 +116,7 @@ mod tests {
 			.create();
 
 		// Create a new VssClient with the mock server URL.
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 		let actual_result = vss_client.put_object(&request).await.unwrap();
 
 		let expected_result = &mock_response;
@@ -106,7 +147,7 @@ mod tests {
 			.create();
 
 		// Create a new VssClient with the mock server URL.
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 		let actual_result = vss_client.delete_object(&request).await.unwrap();
 
 		let expected_result = &mock_response;
@@ -147,7 +188,7 @@ mod tests {
 			.create();
 
 		// Create a new VssClient with the mock server URL.
-		let client = VssClient::new(&base_url, retry_policy());
+		let client = VssClient::new(base_url, retry_policy());
 
 		let actual_result = client.list_key_versions(&request).await.unwrap();
 
@@ -161,7 +202,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_no_such_key_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// NoSuchKeyError
 		let error_response = ErrorResponse {
@@ -185,7 +226,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_get_response_without_value() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// GetObjectResponse with None value
 		let mock_response = GetObjectResponse { value: None, ..Default::default() };
@@ -206,7 +247,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_invalid_request_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Invalid Request Error
 		let error_response = ErrorResponse {
@@ -258,7 +299,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_auth_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Invalid Request Error
 		let error_response =
@@ -305,10 +346,29 @@ mod tests {
 		mock_server.expect(4).assert();
 	}
 
+	struct FailingHeaderProvider {}
+
+	#[async_trait]
+	impl VssHeaderProvider for FailingHeaderProvider {
+		async fn get_headers(&self, _request: &[u8]) -> Result<HashMap<String, String>, VssHeaderProviderError> {
+			Err(VssHeaderProviderError::InvalidData { error: "test".to_string() })
+		}
+	}
+
+	#[tokio::test]
+	async fn test_header_provider_error() {
+		let get_request = GetObjectRequest { store_id: "store".to_string(), key: "k1".to_string() };
+		let header_provider = Arc::new(FailingHeaderProvider {});
+		let client = VssClient::new_with_headers("notused".to_string(), retry_policy(), header_provider);
+		let result = client.get_object(&get_request).await;
+
+		assert!(matches!(result, Err(VssError::AuthError { .. })));
+	}
+
 	#[tokio::test]
 	async fn test_conflict_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Conflict Error
 		let error_response =
@@ -335,7 +395,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_internal_server_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		// Internal Server Error
 		let error_response = ErrorResponse {
@@ -387,7 +447,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_internal_err_handling() {
 		let base_url = mockito::server_url();
-		let vss_client = VssClient::new(&base_url, retry_policy());
+		let vss_client = VssClient::new(base_url, retry_policy());
 
 		let error_response = ErrorResponse { error_code: 999, message: "UnknownException".to_string() };
 		let mut _mock_server = mockito::mock("POST", Matcher::Any)

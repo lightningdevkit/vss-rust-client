@@ -13,7 +13,7 @@ build = "build.rs"
 
 [features]
 default = ["lnurl-auth"]
-lnurl-auth = ["dep:bitcoin", "dep:url", "dep:base64", "dep:serde", "dep:serde_json", "reqwest/json"]
+lnurl-auth = ["dep:bitcoin", "dep:url", "dep:serde", "dep:serde_json", "reqwest/json"]
 
 [dependencies]
 prost = "0.11.6"
@@ -23,9 +23,11 @@ rand = "0.8.5"
 async-trait = "0.1.77"
 bitcoin = { version = "0.32.2", default-features = false, features = ["std", "rand-std"], optional = true }
 url = { version = "2.5.0", default-features = false, optional = true }
-base64 = { version = "0.21.7", default-features = false, optional = true }
+base64 = { version = "0.21.7", default-features = false}
 serde = { version = "1.0.196", default-features = false, features = ["serde_derive"], optional = true }
 serde_json = { version = "1.0.113", default-features = false, optional = true }
+
+bitcoin_hashes = "0.14.0"
 
 [target.'cfg(genproto)'.build-dependencies]
 prost-build = { version = "0.11.3" }
@@ -33,4 +35,5 @@ reqwest =  { version = "0.11.13", default-features = false, features = ["rustls-
 
 [dev-dependencies]
 mockito = "0.31.1"
+proptest = "1.1.0"
 tokio = { version = "1.22.0", features = ["macros"]}

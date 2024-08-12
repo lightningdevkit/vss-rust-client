@@ -64,11 +64,12 @@ impl<T: EntropySource> StorableBuilder<T> {
 	/// [`PutObjectRequest`]: crate::types::PutObjectRequest
 	pub fn deconstruct(&self, mut storable: Storable) -> io::Result<(Vec<u8>, i64)> {
 		let encryption_metadata = storable.encryption_metadata.unwrap();
-		let mut cipher = ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, &[]);
+		let mut cipher =
+			ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, &[]);
 
 		if cipher.decrypt_inplace(&mut storable.data, encryption_metadata.tag.borrow()) {
-			let data_blob =
-				PlaintextBlob::decode(&storable.data[..]).map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
+			let data_blob = PlaintextBlob::decode(&storable.data[..])
+				.map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
 			Ok((data_blob.value, data_blob.version))
 		} else {
 			Err(Error::new(ErrorKind::InvalidData, "Invalid Tag"))
@@ -96,7 +97,10 @@ mod tests {
 		let test_entropy_provider = TestEntropyProvider;
 		let mut data_key = [0u8; 32];
 		test_entropy_provider.fill_bytes(&mut data_key);
-		let storable_builder = StorableBuilder { data_encryption_key: data_key, entropy_source: test_entropy_provider };
+		let storable_builder = StorableBuilder {
+			data_encryption_key: data_key,
+			entropy_source: test_entropy_provider,
+		};
 		let expected_data = b"secret".to_vec();
 		let expected_version = 8;
 		let storable = storable_builder.build(expected_data.clone(), expected_version);

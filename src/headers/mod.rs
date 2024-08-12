@@ -20,7 +20,9 @@ pub trait VssHeaderProvider {
 	///
 	/// A reference to the serialized request body is given as `request`.
 	/// It can be used to perform operations such as request signing.
-	async fn get_headers(&self, request: &[u8]) -> Result<HashMap<String, String>, VssHeaderProviderError>;
+	async fn get_headers(
+		&self, request: &[u8],
+	) -> Result<HashMap<String, String>, VssHeaderProviderError>;
 }
 
 /// Errors around providing headers for each VSS request.
@@ -53,16 +55,16 @@ impl Display for VssHeaderProviderError {
 		match self {
 			Self::InvalidData { error } => {
 				write!(f, "invalid data: {}", error)
-			}
+			},
 			Self::RequestError { error } => {
 				write!(f, "error performing external request: {}", error)
-			}
+			},
 			Self::AuthorizationError { error } => {
 				write!(f, "authorization was refused: {}", error)
-			}
+			},
 			Self::InternalError { error } => {
 				write!(f, "internal error: {}", error)
-			}
+			},
 		}
 	}
 }
@@ -83,12 +85,16 @@ impl FixedHeaders {
 
 #[async_trait]
 impl VssHeaderProvider for FixedHeaders {
-	async fn get_headers(&self, _request: &[u8]) -> Result<HashMap<String, String>, VssHeaderProviderError> {
+	async fn get_headers(
+		&self, _request: &[u8],
+	) -> Result<HashMap<String, String>, VssHeaderProviderError> {
 		Ok(self.headers.clone())
 	}
 }
 
-pub(crate) fn get_headermap(headers: &HashMap<String, String>) -> Result<HeaderMap, VssHeaderProviderError> {
+pub(crate) fn get_headermap(
+	headers: &HashMap<String, String>,
+) -> Result<HeaderMap, VssHeaderProviderError> {
 	let mut headermap = HeaderMap::new();
 	for (name, value) in headers {
 		headermap.insert(

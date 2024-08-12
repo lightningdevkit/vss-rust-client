@@ -72,9 +72,10 @@ impl LnurlAuthToJwtProvider {
 		seed: &[u8], url: String, default_headers: HashMap<String, String>,
 	) -> Result<LnurlAuthToJwtProvider, VssHeaderProviderError> {
 		let engine = Secp256k1::signing_only();
-		let master = Xpriv::new_master(Network::Testnet, seed).map_err(VssHeaderProviderError::from)?;
-		let child_number =
-			ChildNumber::from_hardened_idx(PARENT_DERIVATION_INDEX).map_err(VssHeaderProviderError::from)?;
+		let master =
+			Xpriv::new_master(Network::Testnet, seed).map_err(VssHeaderProviderError::from)?;
+		let child_number = ChildNumber::from_hardened_idx(PARENT_DERIVATION_INDEX)
+			.map_err(VssHeaderProviderError::from)?;
 		let parent_key = master
 			.derive_priv(&engine, &vec![child_number])
 			.map_err(VssHeaderProviderError::from)?;
@@ -124,12 +125,12 @@ impl LnurlAuthToJwtProvider {
 				return Err(VssHeaderProviderError::AuthorizationError {
 					error: format!("LNURL Auth failed, reason is: {}", reason.escape_debug()),
 				});
-			}
+			},
 			_ => {
 				return Err(VssHeaderProviderError::InvalidData {
 					error: "LNURL Auth response did not contain a token nor an error".to_string(),
 				});
-			}
+			},
 		};
 		parse_jwt_token(untrusted_token)
 	}
@@ -153,7 +154,9 @@ impl LnurlAuthToJwtProvider {
 
 #[async_trait]
 impl VssHeaderProvider for LnurlAuthToJwtProvider {
-	async fn get_headers(&self, _request: &[u8]) -> Result<HashMap<String, String>, VssHeaderProviderError> {
+	async fn get_headers(
+		&self, _request: &[u8],
+	) -> Result<HashMap<String, String>, VssHeaderProviderError> {
 		let jwt_token = self.get_jwt_token(false).await?;
 		let mut headers = self.default_headers.clone();
 		headers.insert(AUTHORIZATION.to_string(), format!("Bearer {}", jwt_token));
@@ -161,16 +164,20 @@ impl VssHeaderProvider for LnurlAuthToJwtProvider {
 	}
 }
 
-fn hashing_key(engine: &Secp256k1<SignOnly>, parent_key: &Xpriv) -> Result<PrivateKey, VssHeaderProviderError> {
-	let hashing_child_number =
-		ChildNumber::from_normal_idx(HASHING_DERIVATION_INDEX).map_err(VssHeaderProviderError::from)?;
+fn hashing_key(
+	engine: &Secp256k1<SignOnly>, parent_key: &Xpriv,
+) -> Result<PrivateKey, VssHeaderProviderError> {
+	let hashing_child_number = ChildNumber::from_normal_idx(HASHING_DERIVATION_INDEX)
+		.map_err(VssHeaderProviderError::from)?;
 	parent_key
 		.derive_priv(engine, &vec![hashing_child_number])
 		.map(|xpriv| xpriv.to_priv())
 		.map_err(VssHeaderProviderError::from)
 }
 
-fn linking_key_path(hashing_key: &PrivateKey, domain_name: &str) -> Result<DerivationPath, VssHeaderProviderError> {
+fn linking_key_path(
+	hashing_key: &PrivateKey, domain_name: &str,
+) -> Result<DerivationPath, VssHeaderProviderError> {
 	let mut engine = HmacEngine::<sha256::Hash>::new(&hashing_key.inner[..]);
 	engine.input(domain_name.as_bytes());
 	let result = Hmac::<sha256::Hash>::from_engine(engine).to_byte_array();
@@ -187,8 +194,9 @@ fn sign_lnurl(
 	engine: &Secp256k1<SignOnly>, parent_key: &Xpriv, lnurl_str: &str,
 ) -> Result<String, VssHeaderProviderError> {
 	// Parse k1 parameter to sign.
-	let invalid_lnurl =
-		|| VssHeaderProviderError::InvalidData { error: format!("invalid lnurl: {}", lnurl_str.escape_debug()) };
+	let invalid_lnurl = || VssHeaderProviderError::InvalidData {
+		error: format!("invalid lnurl: {}", lnurl_str.escape_debug()),
+	};
 	let mut lnurl = Url::parse(lnurl_str).map_err(|_| invalid_lnurl())?;
 	let domain = lnurl.domain().ok_or(invalid_lnurl())?;
 	let k1_str = lnurl
@@ -207,8 +215,9 @@ fn sign_lnurl(
 		.map_err(VssHeaderProviderError::from)?
 		.to_priv();
 	let linking_public_key = linking_private_key.public_key(engine);
-	let message = Message::from_digest_slice(&k1)
-		.map_err(|_| VssHeaderProviderError::InvalidData { error: format!("invalid k1: {:?}", k1) })?;
+	let message = Message::from_digest_slice(&k1).map_err(|_| {
+		VssHeaderProviderError::InvalidData { error: format!("invalid k1: {:?}", k1) }
+	})?;
 	let sig = engine.sign_ecdsa(&message, &linking_private_key.inner);
 
 	// Compose LNURL with signature and linking public key.
@@ -233,8 +242,9 @@ struct ExpiryClaim {
 
 fn parse_jwt_token(jwt_token: String) -> Result<JwtToken, VssHeaderProviderError> {
 	let parts: Vec<&str> = jwt_token.split('.').collect();
-	let invalid =
-		|| VssHeaderProviderError::InvalidData { error: format!("invalid JWT token: {}", jwt_token.escape_debug()) };
+	let invalid = || VssHeaderProviderError::InvalidData {
+		error: format!("invalid JWT token: {}", jwt_token.escape_debug()),
+	};
 	if parts.len() != 3 {
 		return Err(invalid());
 	}
@@ -242,9 +252,8 @@ fn parse_jwt_token(jwt_token: String) -> Result<JwtToken, VssHeaderProviderError
 	let bytes = URL_SAFE_NO_PAD.decode(parts[1]).map_err(|_| invalid())?;
 	let _ = URL_SAFE_NO_PAD.decode(parts[2]).map_err(|_| invalid())?;
 	let claim: ExpiryClaim = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
-	let expiry = claim
-		.expiry_secs
-		.and_then(|e| SystemTime::UNIX_EPOCH.checked_add(Duration::from_secs(e)));
+	let expiry =
+		claim.expiry_secs.and_then(|e| SystemTime::UNIX_EPOCH.checked_add(Duration::from_secs(e)));
 	Ok(JwtToken { token_str: jwt_token, expiry })
 }
 
@@ -276,7 +285,8 @@ mod test {
 		// Test vector from:
 		// https://github.com/lnurl/luds/blob/43cf7754de2033987a7661afc8b4a3998914a536/05.md
 		let hashing_key = PrivateKey::new(
-			SecretKey::from_str("7d417a6a5e9a6a4a879aeaba11a11838764c8fa2b959c242d43dea682b3e409b").unwrap(),
+			SecretKey::from_str("7d417a6a5e9a6a4a879aeaba11a11838764c8fa2b959c242d43dea682b3e409b")
+				.unwrap(),
 			Network::Testnet, // The network only matters for serialization.
 		);
 		let path = linking_key_path(&hashing_key, "site.com").unwrap();
@@ -288,7 +298,8 @@ mod test {
 	fn test_sign_lnurl() {
 		let engine = Secp256k1::signing_only();
 		let seed: [u8; 32] =
-			FromHex::from_hex("abababababababababababababababababababababababababababababababab").unwrap();
+			FromHex::from_hex("abababababababababababababababababababababababababababababababab")
+				.unwrap();
 		let master = Xpriv::new_master(Network::Testnet, &seed).unwrap();
 		let signed = sign_lnurl(
 			&engine,

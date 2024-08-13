@@ -2,6 +2,8 @@
 mod lnurl_auth_jwt_tests {
 	use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 	use base64::Engine;
+	use bitcoin::bip32::Xpriv;
+	use bitcoin::Network;
 	use mockito::Matcher;
 	use serde_json::json;
 	use std::collections::HashMap;
@@ -34,8 +36,9 @@ mod lnurl_auth_jwt_tests {
 		// Initialize LNURL Auth JWT provider connecting to the mock server.
 		let addr = mockito::server_address();
 		let base_url = format!("http://localhost:{}", addr.port());
+		let parent_key = Xpriv::new_master(Network::Testnet, &[0; 32]).unwrap();
 		let lnurl_auth_jwt =
-			LnurlAuthToJwtProvider::new(&[0; 32], base_url.clone(), HashMap::new()).unwrap();
+			LnurlAuthToJwtProvider::new(parent_key, base_url.clone(), HashMap::new()).unwrap();
 		{
 			// First request will be provided with an expired JWT token.
 			let k1 = "0000000000000000000000000000000000000000000000000000000000000000";

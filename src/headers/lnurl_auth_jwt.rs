@@ -7,7 +7,6 @@ use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::sha256;
 use bitcoin::hashes::{Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1::{Message, Secp256k1, SignOnly};
-use bitcoin::Network;
 use bitcoin::PrivateKey;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -15,8 +14,6 @@ use std::sync::RwLock;
 use std::time::{Duration, SystemTime};
 use url::Url;
 
-// Derivation index of the parent extended private key as defined by LUD-05.
-const PARENT_DERIVATION_INDEX: u32 = 138;
 // Derivation index of the hashing private key as defined by LUD-05.
 const HASHING_DERIVATION_INDEX: u32 = 0;
 // The JWT token will be refreshed by the given amount before its expiry.
@@ -61,24 +58,20 @@ pub struct LnurlAuthToJwtProvider {
 impl LnurlAuthToJwtProvider {
 	/// Creates a new JWT provider based on LNURL Auth.
 	///
-	/// The LNURL Auth keys are derived from a seed according to LUD-05.
-	/// The user is free to choose a consistent seed, such as a hardened derivation from the wallet
-	/// master key or otherwise for compatibility reasons.
+	/// The LNURL Auth keys are derived as children from a hardened parent key,
+	/// following [LUD-05](https://github.com/lnurl/luds/blob/luds/05.md).
+	/// The hardened parent extended key is given here as an argument, and is suggested to be the
+	/// `m/138'` derivation from the wallet master key as in the specification.
+	/// However, users are free to choose a consistent hardened derivation path.
+	///
 	/// The LNURL with the challenge will be retrieved by making a request to the given URL.
 	/// The JWT token will be returned in response to the signed LNURL request under a token field.
 	/// The given set of headers will be used for LNURL requests, and will also be returned together
 	/// with the JWT authorization header for VSS requests.
 	pub fn new(
-		seed: &[u8], url: String, default_headers: HashMap<String, String>,
+		parent_key: Xpriv, url: String, default_headers: HashMap<String, String>,
 	) -> Result<LnurlAuthToJwtProvider, VssHeaderProviderError> {
 		let engine = Secp256k1::signing_only();
-		let master =
-			Xpriv::new_master(Network::Testnet, seed).map_err(VssHeaderProviderError::from)?;
-		let child_number = ChildNumber::from_hardened_idx(PARENT_DERIVATION_INDEX)
-			.map_err(VssHeaderProviderError::from)?;
-		let parent_key = master
-			.derive_priv(&engine, &vec![child_number])
-			.map_err(VssHeaderProviderError::from)?;
 		let default_headermap = get_headermap(&default_headers)?;
 		let client = reqwest::Client::builder()
 			.default_headers(default_headermap)
@@ -297,13 +290,13 @@ mod test {
 	#[test]
 	fn test_sign_lnurl() {
 		let engine = Secp256k1::signing_only();
-		let seed: [u8; 32] =
+		let parent_key_bytes: [u8; 32] =
 			FromHex::from_hex("abababababababababababababababababababababababababababababababab")
 				.unwrap();
-		let master = Xpriv::new_master(Network::Testnet, &seed).unwrap();
+		let parent_key = Xpriv::new_master(Network::Testnet, &parent_key_bytes).unwrap();
 		let signed = sign_lnurl(
 			&engine,
-			&master,
+			&parent_key,
 			"https://example.com/path?tag=login&k1=e2af6254a8df433264fa23f67eb8188635d15ce883e8fc020989d5f82ae6f11e",
 		)
 		.unwrap();

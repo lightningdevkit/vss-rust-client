@@ -67,13 +67,13 @@ impl<T: EntropySource> StorableBuilder<T> {
 		let mut cipher =
 			ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, &[]);
 
-		if cipher.decrypt_inplace(&mut storable.data, encryption_metadata.tag.borrow()) {
-			let data_blob = PlaintextBlob::decode(&storable.data[..])
-				.map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
-			Ok((data_blob.value, data_blob.version))
-		} else {
-			Err(Error::new(ErrorKind::InvalidData, "Invalid Tag"))
-		}
+		cipher
+			.decrypt_inplace(&mut storable.data, encryption_metadata.tag.borrow())
+			.map_err(|_| Error::new(ErrorKind::InvalidData, "Invalid Tag"))?;
+
+		let data_blob = PlaintextBlob::decode(&storable.data[..])
+			.map_err(|e| Error::new(ErrorKind::InvalidData, e))?;
+		Ok((data_blob.value, data_blob.version))
 	}
 }
 

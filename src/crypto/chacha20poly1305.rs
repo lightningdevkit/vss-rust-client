@@ -76,10 +76,14 @@ mod real_chachapoly {
 			self.finish_and_get_tag(out_tag);
 		}
 
-		pub fn decrypt_inplace(&mut self, input_output: &mut [u8], tag: &[u8]) -> bool {
+		pub fn decrypt_inplace(&mut self, input_output: &mut [u8], tag: &[u8]) -> Result<(), ()> {
 			assert!(self.finished == false);
 			self.decrypt_in_place(input_output);
-			self.finish_and_check_tag(tag)
+			if self.finish_and_check_tag(tag) {
+				Ok(())
+			} else {
+				Err(())
+			}
 		}
 
 		// Encrypt `input_output` in-place. To finish and calculate the tag, use `finish_and_get_tag`

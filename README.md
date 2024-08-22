@@ -7,3 +7,6 @@ simplify the development process for Lightning wallets by providing a secure mea
 and manage the essential state required for Lightning Network (LN) operations.
 
 Learn more [here](https://github.com/lightningdevkit/vss-server/blob/main/README.md).
+
+## MSRV
+The Minimum Supported Rust Version (MSRV) is currently 1.63.0.

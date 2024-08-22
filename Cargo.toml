@@ -1,6 +1,7 @@
 [package]
 name = "vss-client"
 version = "0.2.2"
+rust-version = "1.63.0"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 homepage = "https://lightningdevkit.org/"

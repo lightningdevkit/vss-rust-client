@@ -6,10 +6,12 @@ jobs:
   build:
     strategy:
       matrix:
-        toolchain: [ stable, beta ]
+        toolchain: [ stable, beta, 1.63.0 ] # 1.63.0 is current MSRV for vss-client
         include:
           - toolchain: stable
             check-fmt: true
+          - toolchain: 1.63.0
+            msrv: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -20,6 +22,12 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile=minimal --default-toolchain ${{ matrix.toolchain }}
           rustup override set ${{ matrix.toolchain }}
+      - name: Pin packages to allow for MSRV
+        if: matrix.msrv
+        run: |
+            cargo update -p proptest --precise "1.2.0" --verbose # proptest 1.3.0 requires rustc 1.64.0
+            cargo update -p regex --precise "1.9.6" --verbose # regex 1.10.0 requires rustc 1.65.0
+            cargo update -p tokio --precise "1.38.1" --verbose # tokio v1.39.0 requires rustc 1.70 or newer
       - name: Build on Rust ${{ matrix.toolchain }}
         run: cargo build --verbose --color always
       - name: Check formatting

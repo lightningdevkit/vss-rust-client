@@ -14,7 +14,7 @@ pub use lnurl_auth_jwt::LnurlAuthToJwtProvider;
 
 /// Defines a trait around how headers are provided for each VSS request.
 #[async_trait]
-pub trait VssHeaderProvider {
+pub trait VssHeaderProvider: Send + Sync {
 	/// Returns the HTTP headers to be used for a VSS request.
 	/// This method is called on each request, and should likely perform some form of caching.
 	///

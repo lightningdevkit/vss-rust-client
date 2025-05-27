@@ -38,3 +38,10 @@ reqwest =  { version = "0.11.13", default-features = false, features = ["rustls-
 mockito = "0.28.0"
 proptest = "1.1.0"
 tokio = { version = "1.22.0", features = ["macros"]}
+
+[lints.rust.unexpected_cfgs]
+level = "forbid"
+# When adding a new cfg attribute, ensure that it is added to this list.
+check-cfg = [
+	"cfg(genproto)",
+]

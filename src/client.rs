@@ -14,6 +14,7 @@ use crate::types::{
 use crate::util::retry::{retry, RetryPolicy};
 
 const APPLICATION_OCTET_STREAM: &str = "application/octet-stream";
+const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
 /// The provided [`VssClient`] API is minimalistic and is congruent to the VSS server-side API.
@@ -31,7 +32,12 @@ where
 impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	pub fn new(base_url: String, retry_policy: R) -> Self {
-		let client = Client::new();
+		let client = Client::builder()
+			.timeout(DEFAULT_TIMEOUT)
+			.connect_timeout(DEFAULT_TIMEOUT)
+			.read_timeout(DEFAULT_TIMEOUT)
+			.build()
+			.unwrap();
 		Self::from_client(base_url, client, retry_policy)
 	}
 
@@ -51,7 +57,12 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	pub fn new_with_headers(
 		base_url: String, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>,
 	) -> Self {
-		let client = Client::new();
+		let client = Client::builder()
+			.timeout(DEFAULT_TIMEOUT)
+			.connect_timeout(DEFAULT_TIMEOUT)
+			.read_timeout(DEFAULT_TIMEOUT)
+			.build()
+			.unwrap();
 		Self { base_url, client, retry_policy, header_provider }
 	}
 

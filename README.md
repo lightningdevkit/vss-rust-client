@@ -9,4 +9,4 @@ and manage the essential state required for Lightning Network (LN) operations.
 Learn more [here](https://github.com/lightningdevkit/vss-server/blob/main/README.md).
 
 ## MSRV
-The Minimum Supported Rust Version (MSRV) is currently 1.63.0.
+The Minimum Supported Rust Version (MSRV) is currently 1.75.0.

@@ -64,7 +64,9 @@ impl<T: EntropySource> StorableBuilder<T> {
 	///
 	/// [`PutObjectRequest`]: crate::types::PutObjectRequest
 	pub fn deconstruct(&self, mut storable: Storable, aad: &[u8]) -> io::Result<(Vec<u8>, i64)> {
-		let encryption_metadata = storable.encryption_metadata.unwrap();
+		let encryption_metadata = storable
+			.encryption_metadata
+			.ok_or_else(|| Error::new(ErrorKind::InvalidData, "Invalid Metadata"))?;
 		let mut cipher =
 			ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, aad);
 

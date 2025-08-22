@@ -34,18 +34,19 @@ const CHACHA20_CIPHER_NAME: &'static str = "ChaCha20Poly1305";
 impl<T: EntropySource> StorableBuilder<T> {
 	/// Creates a [`Storable`] that can be serialized and stored as `value` in [`PutObjectRequest`].
 	///
-	/// Uses ChaCha20 for encrypting `input` and Poly1305 for generating a mac/tag.
+	/// Uses ChaCha20 for encrypting `input` and Poly1305 for generating a mac/tag with associated
+	/// data `aad` (usually the storage key).
 	///
 	/// Refer to docs on [`Storable`] for more information.
 	///
 	/// [`PutObjectRequest`]: crate::types::PutObjectRequest
-	pub fn build(&self, input: Vec<u8>, version: i64) -> Storable {
+	pub fn build(&self, input: Vec<u8>, version: i64, aad: &[u8]) -> Storable {
 		let mut nonce = vec![0u8; 12];
 		self.entropy_source.fill_bytes(&mut nonce[4..]);
 
 		let mut data_blob = PlaintextBlob { value: input, version }.encode_to_vec();
 
-		let mut cipher = ChaCha20Poly1305::new(&self.data_encryption_key, &nonce, &[]);
+		let mut cipher = ChaCha20Poly1305::new(&self.data_encryption_key, &nonce, aad);
 		let mut tag = vec![0u8; 16];
 		cipher.encrypt_inplace(&mut data_blob, &mut tag);
 		Storable {
@@ -62,10 +63,10 @@ impl<T: EntropySource> StorableBuilder<T> {
 	/// corresponding version as stored at the time of [`PutObjectRequest`].
 	///
 	/// [`PutObjectRequest`]: crate::types::PutObjectRequest
-	pub fn deconstruct(&self, mut storable: Storable) -> io::Result<(Vec<u8>, i64)> {
+	pub fn deconstruct(&self, mut storable: Storable, aad: &[u8]) -> io::Result<(Vec<u8>, i64)> {
 		let encryption_metadata = storable.encryption_metadata.unwrap();
 		let mut cipher =
-			ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, &[]);
+			ChaCha20Poly1305::new(&self.data_encryption_key, &encryption_metadata.nonce, aad);
 
 		cipher
 			.decrypt_inplace(&mut storable.data, encryption_metadata.tag.borrow())
@@ -103,10 +104,38 @@ mod tests {
 		};
 		let expected_data = b"secret".to_vec();
 		let expected_version = 8;
-		let storable = storable_builder.build(expected_data.clone(), expected_version);
+		let aad = b"A";
+		let storable = storable_builder.build(expected_data.clone(), expected_version, aad);
 
-		let (actual_data, actual_version) = storable_builder.deconstruct(storable).unwrap();
+		let (actual_data, actual_version) = storable_builder.deconstruct(storable, aad).unwrap();
 		assert_eq!(actual_data, expected_data);
 		assert_eq!(actual_version, expected_version);
+	}
+
+	#[test]
+	fn decrypt_key_mismatch_fails() {
+		let test_entropy_provider = TestEntropyProvider;
+		let mut data_key = [0u8; 32];
+		test_entropy_provider.fill_bytes(&mut data_key);
+		let storable_builder = StorableBuilder {
+			data_encryption_key: data_key,
+			entropy_source: test_entropy_provider,
+		};
+
+		let expected_data_a = b"secret_a".to_vec();
+		let expected_version_a = 8;
+		let aad_a = b"A";
+		let storable_a = storable_builder.build(expected_data_a.clone(), expected_version_a, aad_a);
+
+		let expected_data_b = b"secret_b".to_vec();
+		let expected_version_b = 8;
+		let aad_b = b"B";
+		let storable_b = storable_builder.build(expected_data_b.clone(), expected_version_b, aad_b);
+
+		let (actual_data, actual_version) =
+			storable_builder.deconstruct(storable_a, aad_a).unwrap();
+		assert_eq!(actual_data, expected_data_a);
+		assert_eq!(actual_version, expected_version_a);
+		assert!(storable_builder.deconstruct(storable_b, aad_a).is_err());
 	}
 }

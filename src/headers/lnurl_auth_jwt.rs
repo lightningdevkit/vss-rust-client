@@ -128,7 +128,7 @@ impl LnurlAuthToJwtProvider {
 		parse_jwt_token(untrusted_token)
 	}
 
-	async fn get_jwt_token(&self, force_refresh: bool) -> Result<String, VssHeaderProviderError> {
+	pub async fn get_jwt_token(&self, force_refresh: bool) -> Result<String, VssHeaderProviderError> {
 		let cached_token_str = if force_refresh {
 			None
 		} else {

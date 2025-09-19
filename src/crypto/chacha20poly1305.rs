@@ -198,3 +198,48 @@ mod real_chachapoly {
 }
 
 pub use self::real_chachapoly::ChaCha20Poly1305;
+
+mod tests {
+	#[test]
+	fn check_chacha_compat_old_to_new() {
+		let data_encryption_key = [42u8; 32];
+		let mut nonce = [0u8; 12];
+		nonce[4..].copy_from_slice(&[48u8; 8]);
+		let aad = b"asdf";
+
+		let mut old_cipher = super::ChaCha20Poly1305::new(&data_encryption_key, &nonce, aad);
+
+		let mut tag = [0u8; 16];
+		let mut very_secret_data = vec![89u8; 128];
+		let expected_very_secret_data = very_secret_data.clone();
+		old_cipher.encrypt_inplace(&mut very_secret_data, &mut tag);
+
+		let new_key = chacha20_poly1305::Key::new(data_encryption_key);
+		let new_nonce = chacha20_poly1305::Nonce::new(nonce);
+		let new_cipher = chacha20_poly1305::ChaCha20Poly1305::new(new_key, new_nonce);
+
+		new_cipher.decrypt(&mut very_secret_data, tag, Some(aad)).unwrap();
+		assert_eq!(very_secret_data, expected_very_secret_data);
+	}
+
+	#[test]
+	fn check_chacha_compat_new_to_old() {
+		let data_encryption_key = [42u8; 32];
+		let mut nonce = [0u8; 12];
+		nonce[4..].copy_from_slice(&[48u8; 8]);
+		let aad = b"asdf";
+
+		let new_key = chacha20_poly1305::Key::new(data_encryption_key.clone());
+		let new_nonce = chacha20_poly1305::Nonce::new(nonce.clone());
+		let new_cipher = chacha20_poly1305::ChaCha20Poly1305::new(new_key, new_nonce);
+
+		let mut very_secret_data = vec![89u8; 128];
+		let expected_very_secret_data = very_secret_data.clone();
+		let tag = new_cipher.encrypt(&mut very_secret_data, Some(aad));
+
+		let mut old_cipher = super::ChaCha20Poly1305::new(&data_encryption_key, &nonce, aad);
+
+		old_cipher.decrypt_inplace(&mut very_secret_data, &tag).unwrap();
+		assert_eq!(very_secret_data, expected_very_secret_data);
+	}
+}

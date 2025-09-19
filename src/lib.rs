@@ -23,8 +23,5 @@ pub mod types;
 /// Contains utils for encryption, requests-retries etc.
 pub mod util;
 
-// Encryption-Decryption related crate-only helpers.
-pub(crate) mod crypto;
-
 /// A collection of header providers.
 pub mod headers;

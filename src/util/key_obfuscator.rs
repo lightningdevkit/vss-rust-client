@@ -4,7 +4,7 @@ use base64::prelude::BASE64_STANDARD_NO_PAD;
 use base64::Engine;
 use bitcoin_hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 
-use crate::crypto::chacha20poly1305::ChaCha20Poly1305;
+use chacha20_poly1305::{ChaCha20Poly1305, Key, Nonce};
 
 /// [`KeyObfuscator`] is a utility to obfuscate and deobfuscate storage
 /// keys to be used for VSS operations.
@@ -74,9 +74,14 @@ impl KeyObfuscator {
 		// Split obfuscated_key into ciphertext, tag(for ciphertext), wrapped_nonce, tag(for wrapped_nonce).
 		let (ciphertext, remaining) = obfuscated_key_bytes
 			.split_at(obfuscated_key_bytes.len() - TAG_LENGTH - NONCE_LENGTH - TAG_LENGTH);
-		let (tag, remaining) = remaining.split_at(TAG_LENGTH);
-		let (wrapped_nonce_bytes, wrapped_nonce_tag) = remaining.split_at(NONCE_LENGTH);
-		debug_assert_eq!(wrapped_nonce_tag.len(), TAG_LENGTH);
+		let (tag_bytes, remaining) = remaining.split_at(TAG_LENGTH);
+		let mut tag = [0u8; TAG_LENGTH];
+		tag.copy_from_slice(&tag_bytes);
+
+		let (wrapped_nonce_bytes, wrapped_nonce_tag_bytes) = remaining.split_at(NONCE_LENGTH);
+
+		let mut wrapped_nonce_tag = [0u8; TAG_LENGTH];
+		wrapped_nonce_tag.copy_from_slice(&wrapped_nonce_tag_bytes[..TAG_LENGTH]);
 
 		// Unwrap wrapped_nonce to get nonce.
 		let mut wrapped_nonce = [0u8; NONCE_LENGTH];
@@ -90,9 +95,10 @@ impl KeyObfuscator {
 		})?;
 
 		// Decrypt ciphertext using nonce.
-		let mut cipher = ChaCha20Poly1305::new(&self.obfuscation_key, &wrapped_nonce, &[]);
+		let cipher =
+			ChaCha20Poly1305::new(Key::new(self.obfuscation_key), Nonce::new(wrapped_nonce));
 		let mut ciphertext = ciphertext.to_vec();
-		cipher.decrypt_inplace(&mut ciphertext, tag).map_err(|_| {
+		cipher.decrypt(&mut ciphertext, tag, None).map_err(|_| {
 			let msg = format!("Failed to decrypt key: {}, Invalid Tag.", obfuscated_key);
 			Error::new(ErrorKind::InvalidData, msg)
 		})?;
@@ -110,25 +116,24 @@ impl KeyObfuscator {
 	/// Encrypts the given plaintext in-place using a HMAC generated nonce.
 	fn encrypt(
 		&self, mut plaintext: &mut [u8], initial_nonce_material: &[u8],
-	) -> ([u8; 12], [u8; 16]) {
+	) -> ([u8; NONCE_LENGTH], [u8; TAG_LENGTH]) {
 		let nonce = self.generate_synthetic_nonce(initial_nonce_material);
-		let mut cipher = ChaCha20Poly1305::new(&self.obfuscation_key, &nonce, &[]);
-		let mut tag = [0u8; TAG_LENGTH];
-		cipher.encrypt_inplace(&mut plaintext, &mut tag);
+		let cipher = ChaCha20Poly1305::new(Key::new(self.obfuscation_key), Nonce::new(nonce));
+		let tag = cipher.encrypt(&mut plaintext, None);
 		(nonce, tag)
 	}
 
 	/// Decrypts the given ciphertext in-place using a HMAC generated nonce.
 	fn decrypt(
-		&self, mut ciphertext: &mut [u8], initial_nonce_material: &[u8], tag: &[u8],
+		&self, mut ciphertext: &mut [u8], initial_nonce_material: &[u8], tag: [u8; TAG_LENGTH],
 	) -> Result<(), ()> {
 		let nonce = self.generate_synthetic_nonce(initial_nonce_material);
-		let mut cipher = ChaCha20Poly1305::new(&self.obfuscation_key, &nonce, &[]);
-		cipher.decrypt_inplace(&mut ciphertext, tag)
+		let cipher = ChaCha20Poly1305::new(Key::new(self.obfuscation_key), Nonce::new(nonce));
+		cipher.decrypt(&mut ciphertext, tag, None).map_err(|_| ())
 	}
 
 	/// Generate a HMAC based nonce using provided `initial_nonce_material`.
-	fn generate_synthetic_nonce(&self, initial_nonce_material: &[u8]) -> [u8; 12] {
+	fn generate_synthetic_nonce(&self, initial_nonce_material: &[u8]) -> [u8; NONCE_LENGTH] {
 		let hmac = Self::hkdf(&self.hashing_key, initial_nonce_material);
 		let mut nonce = [0u8; NONCE_LENGTH];
 		nonce[4..].copy_from_slice(&hmac[..8]);

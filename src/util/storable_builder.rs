@@ -1,7 +1,8 @@
-use crate::crypto::chacha20poly1305::ChaCha20Poly1305;
 use crate::types::{EncryptionMetadata, PlaintextBlob, Storable};
 use ::prost::Message;
-use std::borrow::Borrow;
+
+use chacha20_poly1305::{ChaCha20Poly1305, Key, Nonce};
+
 use std::io;
 use std::io::{Error, ErrorKind};
 
@@ -30,6 +31,8 @@ pub trait EntropySource {
 }
 
 const CHACHA20_CIPHER_NAME: &'static str = "ChaCha20Poly1305";
+const TAG_LENGTH: usize = 16;
+const NONCE_LENGTH: usize = 12;
 
 impl<T: EntropySource> StorableBuilder<T> {
 	/// Creates a [`Storable`] that can be serialized and stored as `value` in [`PutObjectRequest`].
@@ -43,19 +46,18 @@ impl<T: EntropySource> StorableBuilder<T> {
 	pub fn build(
 		&self, input: Vec<u8>, version: i64, data_encryption_key: &[u8; 32], aad: &[u8],
 	) -> Storable {
-		let mut nonce = vec![0u8; 12];
+		let mut nonce = [0u8; NONCE_LENGTH];
 		self.entropy_source.fill_bytes(&mut nonce[4..]);
 
 		let mut data_blob = PlaintextBlob { value: input, version }.encode_to_vec();
 
-		let mut cipher = ChaCha20Poly1305::new(data_encryption_key, &nonce, aad);
-		let mut tag = vec![0u8; 16];
-		cipher.encrypt_inplace(&mut data_blob, &mut tag);
+		let cipher = ChaCha20Poly1305::new(Key::new(*data_encryption_key), Nonce::new(nonce));
+		let tag = cipher.encrypt(&mut data_blob, Some(aad));
 		Storable {
 			data: data_blob,
 			encryption_metadata: Some(EncryptionMetadata {
-				nonce,
-				tag,
+				nonce: nonce.to_vec(),
+				tag: tag.to_vec(),
 				cipher_format: CHACHA20_CIPHER_NAME.to_string(),
 			}),
 		}
@@ -71,11 +73,23 @@ impl<T: EntropySource> StorableBuilder<T> {
 		let encryption_metadata = storable
 			.encryption_metadata
 			.ok_or_else(|| Error::new(ErrorKind::InvalidData, "Invalid Metadata"))?;
-		let mut cipher =
-			ChaCha20Poly1305::new(data_encryption_key, &encryption_metadata.nonce, aad);
+
+		if encryption_metadata.nonce.len() != NONCE_LENGTH {
+			return Err(Error::new(ErrorKind::InvalidData, "Invalid Metadata"));
+		}
+		let mut nonce = [0u8; NONCE_LENGTH];
+		nonce.copy_from_slice(&encryption_metadata.nonce);
+
+		let cipher = ChaCha20Poly1305::new(Key::new(*data_encryption_key), Nonce::new(nonce));
+
+		if encryption_metadata.tag.len() != TAG_LENGTH {
+			return Err(Error::new(ErrorKind::InvalidData, "Invalid Metadata"));
+		}
+		let mut tag = [0u8; TAG_LENGTH];
+		tag.copy_from_slice(&encryption_metadata.tag);
 
 		cipher
-			.decrypt_inplace(&mut storable.data, encryption_metadata.tag.borrow())
+			.decrypt(&mut storable.data, tag, Some(aad))
 			.map_err(|_| Error::new(ErrorKind::InvalidData, "Invalid Tag"))?;
 
 		let data_blob = PlaintextBlob::decode(&storable.data[..])

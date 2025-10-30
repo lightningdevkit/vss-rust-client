@@ -136,6 +136,10 @@ impl KeyObfuscator {
 	fn generate_synthetic_nonce(&self, initial_nonce_material: &[u8]) -> [u8; NONCE_LENGTH] {
 		let hmac = Self::hkdf(&self.hashing_key, initial_nonce_material);
 		let mut nonce = [0u8; NONCE_LENGTH];
+		// TODO: While the RFC specifies a 12-byte nonce, we use an 8-byte nonce for
+		// backwards compatibility with the rust-lightning implementation of
+		// Chacha20Poly1305. We now use the rust-bitcoin implementation, which allows
+		// for 12-byte nonces, so we should figure out an upgrade path for this.
 		nonce[4..].copy_from_slice(&hmac[..8]);
 		nonce
 	}

@@ -26,6 +26,7 @@ jobs:
         if: matrix.msrv
         run: |
           cargo update -p idna_adapter --precise 1.1.0 # This has us use `unicode-normalization` which has a more conservative MSRV
+          cargo update -p proptest --precise "1.8.0" --verbose # proptest 1.9.0 requires rustc 1.82.0
       - name: Build on Rust ${{ matrix.toolchain }}
         run: cargo build --verbose --color always
       - name: Check formatting

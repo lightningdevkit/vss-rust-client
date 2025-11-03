@@ -47,7 +47,7 @@ impl<T: EntropySource> StorableBuilder<T> {
 		&self, input: Vec<u8>, version: i64, data_encryption_key: &[u8; 32], aad: &[u8],
 	) -> Storable {
 		let mut nonce = [0u8; NONCE_LENGTH];
-		self.entropy_source.fill_bytes(&mut nonce[4..]);
+		self.entropy_source.fill_bytes(&mut nonce);
 
 		let mut data_blob = PlaintextBlob { value: input, version }.encode_to_vec();
 

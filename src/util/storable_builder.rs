@@ -156,4 +156,38 @@ mod tests {
 		assert_eq!(actual_version, expected_version_a);
 		assert!(storable_builder.deconstruct(storable_b, &data_key, aad_a).is_err());
 	}
+
+	#[test]
+	fn decrypt_v031_storable() {
+		// This test ensures backward compatibility with v0.3.1 Storables.
+		// In v0.3.1, the AAD was hardcoded to empty (&[]), so we must pass an empty AAD
+		// when decrypting v0.3.1 Storables to maintain compatibility.
+		let test_entropy_provider = TestEntropyProvider;
+		let mut data_key = [0u8; 32];
+		test_entropy_provider.fill_bytes(&mut data_key);
+		let storable_builder = StorableBuilder::new(test_entropy_provider);
+
+		// This Storable was generated using v0.3.1 with:
+		// - data: b"backward_compat_test_data"
+		// - version: 42
+		// - data_encryption_key: same as data_key above
+		// - aad: &[] (hardcoded in v0.3.1)
+		let v031_serialized = vec![
+			0x0a, 0x1d, 0x32, 0x19, 0xe9, 0xfb, 0x45, 0xd7, 0x42, 0xf5, 0x6c, 0x40, 0x1b, 0x74,
+			0x13, 0xe7, 0xae, 0x07, 0xfd, 0x81, 0xe1, 0x43, 0x3a, 0xf2, 0x86, 0x3c, 0xe8, 0x8f,
+			0x01, 0xf8, 0x6c, 0x12, 0x32, 0x0a, 0x10, 0x43, 0x68, 0x61, 0x43, 0x68, 0x61, 0x32,
+			0x30, 0x50, 0x6f, 0x6c, 0x79, 0x31, 0x33, 0x30, 0x35, 0x12, 0x0c, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x1a, 0x10, 0x87, 0x16, 0x35,
+			0x02, 0x26, 0x1e, 0x30, 0xec, 0x7c, 0xf1, 0x4b, 0x79, 0x70, 0xa2, 0x41, 0x16,
+		];
+
+		let v031_storable = Storable::decode(&v031_serialized[..]).unwrap();
+
+		// Decrypt with empty AAD to match v0.3.1 behavior
+		let (actual_data, actual_version) =
+			storable_builder.deconstruct(v031_storable, &data_key, &[]).unwrap();
+
+		assert_eq!(actual_data, b"backward_compat_test_data".to_vec());
+		assert_eq!(actual_version, 42);
+	}
 }

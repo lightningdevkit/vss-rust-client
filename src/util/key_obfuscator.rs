@@ -175,6 +175,21 @@ mod tests {
 		);
 	}
 
+	#[test]
+	fn deobfuscate_v031_key() {
+		// This test ensures backward compatibility with v0.3.1 obfuscated keys.
+		// The obfuscated key was generated using v0.3.1 with:
+		// - obfuscation_master_key: [0xAB; 32]
+		// - original key: "my_storage_key_v031_compat"
+		let obfuscation_master_key = [0xAB; 32];
+		let key_obfuscator = KeyObfuscator::new(obfuscation_master_key);
+
+		let v031_obfuscated_key = "nxrixRQPGawY+a9JFLThii0RgeADtEdSjh2YDgpZhBKOuw6GKr5UAIIwsQCathJlZsmuSku+RGB1/JuxFUMQGoAwa+M8tg";
+
+		let deobfuscated_key = key_obfuscator.deobfuscate(v031_obfuscated_key).unwrap();
+		assert_eq!(deobfuscated_key, "my_storage_key_v031_compat");
+	}
+
 	use proptest::prelude::*;
 
 	proptest! {

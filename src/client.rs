@@ -15,6 +15,7 @@ use crate::util::retry::{retry, RetryPolicy};
 
 const APPLICATION_OCTET_STREAM: &str = "application/octet-stream";
 const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+const DEFAULT_RETRIES: u32 = 2;
 
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
 /// The provided [`VssClient`] API is minimalistic and is congruent to the VSS server-side API.
@@ -31,9 +32,9 @@ where
 
 impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
-	pub fn new(base_url: String, retry_policy: R) -> Self {
-		let client = build_client();
-		Self::from_client(base_url, client, retry_policy)
+	pub fn new(base_url: String, retry_policy: R) -> Result<Self, VssError> {
+		let client = build_client(&base_url)?;
+		Ok(Self::from_client(base_url, client, retry_policy))
 	}
 
 	/// Constructs a [`VssClient`] from a given [`reqwest::Client`], using `base_url` as the VSS server endpoint.
@@ -51,9 +52,9 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	/// HTTP headers will be provided by the given `header_provider`.
 	pub fn new_with_headers(
 		base_url: String, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>,
-	) -> Self {
-		let client = build_client();
-		Self { base_url, client, retry_policy, header_provider }
+	) -> Result<Self, VssError> {
+		let client = build_client(&base_url)?;
+		Ok(Self { base_url, client, retry_policy, header_provider })
 	}
 
 	/// Returns the underlying base URL.
@@ -164,11 +165,31 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	}
 }
 
-fn build_client() -> Client {
-	Client::builder()
+fn build_client(base_url: &str) -> Result<Client, VssError> {
+	let url = reqwest::Url::parse(base_url).map_err(|_| VssError::InvalidUrlError)?;
+	let host_str = url.host_str().ok_or(VssError::InvalidUrlError)?.to_string();
+	// TODO: Once the response `payload` is available in `classify_fn`, we should filter out any
+	// error types for which retrying doesn't make sense (i.e., `NoSuchKeyError`,
+	// `InvalidRequestError`,`ConflictError`).
+	let retry = reqwest::retry::for_host(host_str)
+		.max_retries_per_request(DEFAULT_RETRIES)
+		.classify_fn(|req_rep| match req_rep.status() {
+			// VSS uses INTERNAL_SERVER_ERROR when sending back error repsonses. These are
+			// currently still covered by our `RetryPolicy`, so we tell `reqwest` not to retry them.
+			Some(reqwest::StatusCode::INTERNAL_SERVER_ERROR) => req_rep.success(),
+			Some(reqwest::StatusCode::BAD_REQUEST) => req_rep.success(),
+			Some(reqwest::StatusCode::UNAUTHORIZED) => req_rep.success(),
+			Some(reqwest::StatusCode::NOT_FOUND) => req_rep.success(),
+			Some(reqwest::StatusCode::CONFLICT) => req_rep.success(),
+			Some(reqwest::StatusCode::OK) => req_rep.success(),
+			_ => req_rep.retryable(),
+		});
+	let client = Client::builder()
 		.timeout(DEFAULT_TIMEOUT)
 		.connect_timeout(DEFAULT_TIMEOUT)
 		.read_timeout(DEFAULT_TIMEOUT)
+		.retry(retry)
 		.build()
-		.unwrap()
+		.unwrap();
+	Ok(client)
 }

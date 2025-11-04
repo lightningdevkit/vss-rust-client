@@ -28,6 +28,9 @@ pub enum VssError {
 	/// There is an unknown error, it could be a client-side bug, unrecognized error-code, network error
 	/// or something else.
 	InternalError(String),
+
+	/// The provided URL is invalid.
+	InvalidUrlError,
 }
 
 impl VssError {
@@ -66,6 +69,9 @@ impl Display for VssError {
 			},
 			VssError::InternalError(message) => {
 				write!(f, "InternalError: {}", message)
+			},
+			VssError::InvalidUrlError => {
+				write!(f, "The provided URL is invalid")
 			},
 		}
 	}

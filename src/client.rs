@@ -11,8 +11,6 @@ use crate::types::{
 	DeleteObjectRequest, DeleteObjectResponse, GetObjectRequest, GetObjectResponse,
 	ListKeyVersionsRequest, ListKeyVersionsResponse, PutObjectRequest, PutObjectResponse,
 };
-use crate::util::retry::{retry, RetryPolicy};
-
 const APPLICATION_OCTET_STREAM: &str = "application/octet-stream";
 const DEFAULT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 const DEFAULT_RETRIES: u32 = 2;
@@ -20,41 +18,32 @@ const DEFAULT_RETRIES: u32 = 2;
 /// Thin-client to access a hosted instance of Versioned Storage Service (VSS).
 /// The provided [`VssClient`] API is minimalistic and is congruent to the VSS server-side API.
 #[derive(Clone)]
-pub struct VssClient<R>
-where
-	R: RetryPolicy<E = VssError>,
-{
+pub struct VssClient {
 	base_url: String,
 	client: Client,
-	retry_policy: R,
 	header_provider: Arc<dyn VssHeaderProvider>,
 }
 
-impl<R: RetryPolicy<E = VssError>> VssClient<R> {
+impl VssClient {
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
-	pub fn new(base_url: String, retry_policy: R) -> Result<Self, VssError> {
+	pub fn new(base_url: String) -> Result<Self, VssError> {
 		let client = build_client(&base_url)?;
-		Ok(Self::from_client(base_url, client, retry_policy))
+		Ok(Self::from_client(base_url, client))
 	}
 
 	/// Constructs a [`VssClient`] from a given [`reqwest::Client`], using `base_url` as the VSS server endpoint.
-	pub fn from_client(base_url: String, client: Client, retry_policy: R) -> Self {
-		Self {
-			base_url,
-			client,
-			retry_policy,
-			header_provider: Arc::new(FixedHeaders::new(HashMap::new())),
-		}
+	pub fn from_client(base_url: String, client: Client) -> Self {
+		Self { base_url, client, header_provider: Arc::new(FixedHeaders::new(HashMap::new())) }
 	}
 
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	///
 	/// HTTP headers will be provided by the given `header_provider`.
 	pub fn new_with_headers(
-		base_url: String, retry_policy: R, header_provider: Arc<dyn VssHeaderProvider>,
+		base_url: String, header_provider: Arc<dyn VssHeaderProvider>,
 	) -> Result<Self, VssError> {
 		let client = build_client(&base_url)?;
-		Ok(Self { base_url, client, retry_policy, header_provider })
+		Ok(Self { base_url, client, header_provider })
 	}
 
 	/// Returns the underlying base URL.
@@ -68,22 +57,17 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	pub async fn get_object(
 		&self, request: &GetObjectRequest,
 	) -> Result<GetObjectResponse, VssError> {
-		retry(
-			|| async {
-				let url = format!("{}/getObject", self.base_url);
-				self.post_request(request, &url).await.and_then(|response: GetObjectResponse| {
-					if response.value.is_none() {
-						Err(VssError::InternalServerError(
-							"VSS Server API Violation, expected value in GetObjectResponse but found none".to_string(),
-						))
-					} else {
-						Ok(response)
-					}
-				})
-			},
-			&self.retry_policy,
-		)
-		.await
+		let url = format!("{}/getObject", self.base_url);
+		self.post_request(request, &url).await.and_then(|response: GetObjectResponse| {
+			if response.value.is_none() {
+				Err(VssError::InternalServerError(
+					"VSS Server API Violation, expected value in GetObjectResponse but found none"
+						.to_string(),
+				))
+			} else {
+				Ok(response)
+			}
+		})
 	}
 
 	/// Writes multiple [`PutObjectRequest::transaction_items`] as part of a single transaction.
@@ -93,14 +77,8 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	pub async fn put_object(
 		&self, request: &PutObjectRequest,
 	) -> Result<PutObjectResponse, VssError> {
-		retry(
-			|| async {
-				let url = format!("{}/putObjects", self.base_url);
-				self.post_request(request, &url).await
-			},
-			&self.retry_policy,
-		)
-		.await
+		let url = format!("{}/putObjects", self.base_url);
+		self.post_request(request, &url).await
 	}
 
 	/// Deletes the given `key` and `value` in `request`.
@@ -109,14 +87,8 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	pub async fn delete_object(
 		&self, request: &DeleteObjectRequest,
 	) -> Result<DeleteObjectResponse, VssError> {
-		retry(
-			|| async {
-				let url = format!("{}/deleteObject", self.base_url);
-				self.post_request(request, &url).await
-			},
-			&self.retry_policy,
-		)
-		.await
+		let url = format!("{}/deleteObject", self.base_url);
+		self.post_request(request, &url).await
 	}
 
 	/// Lists keys and their corresponding version for a given [`ListKeyVersionsRequest::store_id`].
@@ -125,14 +97,8 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 	pub async fn list_key_versions(
 		&self, request: &ListKeyVersionsRequest,
 	) -> Result<ListKeyVersionsResponse, VssError> {
-		retry(
-			|| async {
-				let url = format!("{}/listKeyVersions", self.base_url);
-				self.post_request(request, &url).await
-			},
-			&self.retry_policy,
-		)
-		.await
+		let url = format!("{}/listKeyVersions", self.base_url);
+		self.post_request(request, &url).await
 	}
 
 	async fn post_request<Rq: Message, Rs: Message + Default>(

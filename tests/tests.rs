@@ -7,18 +7,18 @@ mod tests {
 	use std::collections::HashMap;
 	use std::sync::Arc;
 	use std::time::Duration;
-	use vss_client::client::VssClient;
-	use vss_client::error::VssError;
-	use vss_client::headers::FixedHeaders;
-	use vss_client::headers::VssHeaderProvider;
-	use vss_client::headers::VssHeaderProviderError;
+	use vss_client_ng::client::VssClient;
+	use vss_client_ng::error::VssError;
+	use vss_client_ng::headers::FixedHeaders;
+	use vss_client_ng::headers::VssHeaderProvider;
+	use vss_client_ng::headers::VssHeaderProviderError;
 
-	use vss_client::types::{
+	use vss_client_ng::types::{
 		DeleteObjectRequest, DeleteObjectResponse, ErrorCode, ErrorResponse, GetObjectRequest,
 		GetObjectResponse, KeyValue, ListKeyVersionsRequest, ListKeyVersionsResponse,
 		PutObjectRequest, PutObjectResponse,
 	};
-	use vss_client::util::retry::{ExponentialBackoffRetryPolicy, RetryPolicy};
+	use vss_client_ng::util::retry::{ExponentialBackoffRetryPolicy, RetryPolicy};
 
 	const APPLICATION_OCTET_STREAM: &'static str = "application/octet-stream";
 

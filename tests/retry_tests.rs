@@ -5,8 +5,8 @@ mod retry_tests {
 	use std::sync::Arc;
 	use std::time::Duration;
 
-	use vss_client::error::VssError;
-	use vss_client::util::retry::{retry, ExponentialBackoffRetryPolicy, RetryPolicy};
+	use vss_client_ng::error::VssError;
+	use vss_client_ng::util::retry::{retry, ExponentialBackoffRetryPolicy, RetryPolicy};
 
 	#[tokio::test]
 	async fn test_async_retry() {

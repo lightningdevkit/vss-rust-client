@@ -8,8 +8,8 @@ mod lnurl_auth_jwt_tests {
 	use serde_json::json;
 	use std::collections::HashMap;
 	use std::time::SystemTime;
-	use vss_client::headers::LnurlAuthToJwtProvider;
-	use vss_client::headers::VssHeaderProvider;
+	use vss_client_ng::headers::LnurlAuthToJwtProvider;
+	use vss_client_ng::headers::VssHeaderProvider;
 
 	const APPLICATION_JSON: &'static str = "application/json";
 

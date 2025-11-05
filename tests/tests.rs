@@ -222,7 +222,7 @@ mod tests {
 			message: "NoSuchKeyException".to_string(),
 		};
 		let mock_server = mockito::mock("POST", GET_OBJECT_ENDPOINT)
-			.with_status(409)
+			.with_status(404)
 			.with_body(&error_response.encode_to_vec())
 			.create();
 

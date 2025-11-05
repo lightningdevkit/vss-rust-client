@@ -1,4 +1,4 @@
-# vss-rust-client
+# vss-client-ng
 Client-side library to interact with Versioned Storage Service (VSS).
 
 VSS is an open-source project designed to offer a server-side cloud storage solution specifically

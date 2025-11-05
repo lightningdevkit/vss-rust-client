@@ -12,8 +12,8 @@ use std::time::Duration;
 /// **Example**
 /// ```rust
 /// # use std::time::Duration;
-/// # use vss_client::error::VssError;
-/// # use vss_client::util::retry::{ExponentialBackoffRetryPolicy, retry, RetryPolicy};
+/// # use vss_client_ng::error::VssError;
+/// # use vss_client_ng::util::retry::{ExponentialBackoffRetryPolicy, retry, RetryPolicy};
 /// #
 /// # async fn operation() -> Result<i32, VssError>  {
 /// # 	tokio::time::sleep(Duration::from_millis(10)).await;
@@ -33,8 +33,8 @@ use std::time::Duration;
 /// size at compile time, we can specify its concrete type as follows:
 /// ```
 /// # use std::time::Duration;
-/// # use vss_client::error::VssError;
-/// # use vss_client::util::retry::{ExponentialBackoffRetryPolicy, FilteredRetryPolicy, retry, RetryPolicy};
+/// # use vss_client_ng::error::VssError;
+/// # use vss_client_ng::util::retry::{ExponentialBackoffRetryPolicy, FilteredRetryPolicy, retry, RetryPolicy};
 ///
 /// type VssRetryPolicy = FilteredRetryPolicy<ExponentialBackoffRetryPolicy<VssError>, Box<dyn 'static + Send + Sync + Fn(&VssError) -> bool>>;
 ///

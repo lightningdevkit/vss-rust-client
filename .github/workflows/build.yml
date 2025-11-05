@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        toolchain: [ stable, beta, 1.75.0 ] # 1.75.0 is current MSRV for vss-client
+        toolchain: [ stable, beta, 1.75.0 ] # 1.75.0 is current MSRV for vss-client-ng
         include:
           - toolchain: stable
             check-fmt: true

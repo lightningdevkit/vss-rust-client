@@ -46,6 +46,16 @@ impl<R: RetryPolicy<E = VssError>> VssClient<R> {
 		}
 	}
 
+	/// Constructs a [`VssClient`] from a given [`reqwest::Client`], using `base_url` as the VSS server endpoint.
+	///
+	/// HTTP headers will be provided by the given `header_provider`.
+	pub fn from_client_and_headers(
+		base_url: String, client: Client, retry_policy: R,
+		header_provider: Arc<dyn VssHeaderProvider>,
+	) -> Self {
+		Self { base_url, client, retry_policy, header_provider }
+	}
+
 	/// Constructs a [`VssClient`] using `base_url` as the VSS server endpoint.
 	///
 	/// HTTP headers will be provided by the given `header_provider`.

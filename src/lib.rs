@@ -12,6 +12,7 @@
 #![deny(missing_docs)]
 
 // Crate re-exports
+pub use prost;
 pub use reqwest;
 
 /// Implements a thin-client ([`client::VssClient`]) to access a hosted instance of Versioned Storage Service (VSS).
